@@ -1,0 +1,2490 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Absensi Petugas Piket PSB - Pondok Pesantren At-Tawazun 2027/2028</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- SheetJS (XLSX) untuk Ekspor Excel & CSV -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    
+    <!-- Chart.js untuk Grafik Statistik Admin -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', '"Inter"', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            emerald: '#087B52',
+                            deep: '#075C40',
+                            soft: '#E8F5EF',
+                            gold: '#C6A45B',
+                            bg: '#F5F7F6',
+                            surface: '#FFFFFF',
+                            border: '#E5EAE7',
+                            text: '#1F2937',
+                            muted: '#64748B',
+                            success: '#16A34A',
+                            warning: '#D97706',
+                            danger: '#DC2626',
+                            info: '#2563EB'
+                        }
+                    },
+                    boxShadow: {
+                        'soft': '0 2px 12px -2px rgba(7, 92, 64, 0.06), 0 1px 4px -1px rgba(15, 23, 42, 0.04)',
+                        'card': '0 4px 20px -4px rgba(15, 23, 42, 0.06)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #F5F7F6;
+            color: #1F2937;
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+        }
+        /* Subtle Islamic Geometric Header Accent */
+        .islamic-header-accent {
+            background-color: #075C40;
+            background-image: 
+                radial-gradient(circle at 100% 0%, rgba(198, 164, 91, 0.16) 0%, transparent 45%),
+                radial-gradient(circle at 0% 100%, rgba(8, 123, 82, 0.6) 0%, transparent 50%);
+        }
+        /* Mirror preview kamera depan hanya di layar, hasil tangkapan canvas tetap normal */
+        #camera-preview {
+            transform: scaleX(-1);
+        }
+        /* Custom sleek scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #F5F7F6;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+        }
+        /* Sidebar transition */
+        .sidebar-transition {
+            transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-[#E8F5EF] selection:text-[#075C40]">
+
+    <!-- GLOBAL TOAST NOTIFICATION -->
+    <div id="toast-container" class="fixed top-4 right-4 left-4 sm:left-auto sm:w-96 z-[70] flex flex-col gap-2.5 pointer-events-none"></div>
+
+    <!-- CUSTOM CONFIRMATION / DETAIL MODAL -->
+    <div id="custom-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-[2px] z-[60] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-[#E5EAE7] transform transition-all">
+            <div id="modal-icon" class="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"></div>
+            <h3 id="modal-title" class="text-lg font-bold text-center text-[#1F2937] mb-1.5">Judul</h3>
+            <div id="modal-body" class="text-sm text-[#64748B] text-center mb-6 whitespace-pre-line leading-relaxed">Isi pesan</div>
+            <div id="modal-actions" class="flex gap-2.5 justify-center"></div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODE 1: HALAMAN PETUGAS STANDALONE (MOBILE-FIRST, TANPA SIDEBAR ADMIN) -->
+    <!-- ===================================================================== -->
+    <div id="petugas-standalone-shell" class="min-h-screen flex flex-col justify-between">
+        
+        <!-- Top Identitas Header Petugas -->
+        <header class="islamic-header-accent text-white border-b border-[#C6A45B]/30 shadow-sm">
+            <div class="max-w-xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3.5 min-w-0">
+                    <div class="w-12 h-12 rounded-2xl bg-white/10 border border-[#C6A45B]/50 p-1.5 flex items-center justify-center shrink-0 shadow-inner">
+                        <img id="petugas-logo" src="https://placehold.co/120x120/075C40/C6A45B?text=AT" alt="Logo Pondok Pesantren At-Tawazun" class="w-full h-full object-contain rounded-xl">
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#C6A45B]/20 text-[#FDE68A] border border-[#C6A45B]/40">
+                                TP 2027/2028
+                            </span>
+                            <span id="petugas-db-pill" class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-rose-950/70 text-rose-200 border border-rose-500/30">
+                                <span id="petugas-db-dot" class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                                <span id="petugas-db-text">Memeriksa Server</span>
+                            </span>
+                        </div>
+                        <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white mt-1 truncate">
+                            ABSENSI PETUGAS PIKET PSB
+                        </h1>
+                        <p class="text-xs text-emerald-100/90 font-medium truncate">
+                            Pondok Pesantren At-Tawazun
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Tombol Masuk Portal Admin -->
+                <button onclick="switchMode('admin')" title="Portal Administrasi PSB"
+                    class="shrink-0 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-semibold text-white flex items-center gap-1.5 transition">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-[#C6A45B]"></i>
+                    <span class="hidden sm:inline">Admin</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Konten Utama Petugas -->
+        <main class="flex-1 max-w-xl w-full mx-auto px-4 py-5 space-y-4">
+
+            <!-- Kartu Waktu WIB & Info Radius -->
+            <div class="bg-white rounded-2xl p-4 border border-[#E5EAE7] shadow-soft flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-[#E8F5EF] text-[#087B52] flex items-center justify-center shrink-0">
+                        <i data-lucide="clock" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <p id="petugas-live-date" class="text-xs font-semibold text-[#64748B]">Memuat tanggal...</p>
+                        <div class="flex items-baseline gap-1.5">
+                            <span id="petugas-live-clock" class="text-lg font-extrabold text-[#1F2937] font-mono tracking-tight">00:00:00</span>
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#E8F5EF] text-[#087B52]">WIB</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="text-[11px] text-[#64748B] block">Area Absensi</span>
+                    <span class="inline-flex items-center gap-1 text-xs font-bold text-[#075C40]">
+                        <i data-lucide="map-pin" class="w-3.5 h-3.5 text-[#C6A45B]"></i>
+                        Radius <span id="petugas-radius-label">30</span>m
+                    </span>
+                </div>
+            </div>
+
+            <!-- Alert Jika Backend Belum Terhubung -->
+            <div id="petugas-offline-alert" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+                <i data-lucide="alert-triangle" class="w-5 h-5 text-[#D97706] shrink-0 mt-0.5"></i>
+                <div class="text-xs text-amber-900 leading-relaxed">
+                    <p class="font-bold">Koneksi Server Belum Dikonfigurasi</p>
+                    <p class="mt-0.5 text-amber-800">Sistem belum terhubung ke URL Google Apps Script. Silakan hubungi Admin PSB untuk mengaktifkan koneksi backend.</p>
+                </div>
+            </div>
+
+            <!-- VIEW A: FORMULIR ABSENSI PETUGAS -->
+            <div id="petugas-form-container" class="bg-white rounded-2xl border border-[#E5EAE7] shadow-card overflow-hidden">
+                <div class="px-5 py-4 border-b border-[#E5EAE7] bg-[#F5F7F6]/60 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-base font-bold text-[#1F2937]">Formulir Kehadiran Petugas</h2>
+                        <p class="text-xs text-[#64748B] mt-0.5">Lengkapi identitas, foto selfie langsung, dan verifikasi GPS.</p>
+                    </div>
+                    <span class="w-2.5 h-2.5 rounded-full bg-[#087B52]"></span>
+                </div>
+
+                <form id="attendance-form" class="p-5 space-y-5" onsubmit="handleAttendanceSubmit(event)">
+                    
+                    <!-- 1. Nama Lengkap dan Gelar -->
+                    <div>
+                        <label for="input-nama" class="block text-xs font-bold uppercase tracking-wide text-[#1F2937] mb-1.5">
+                            Nama Lengkap dan Gelar <span class="text-[#DC2626]">*</span>
+                        </label>
+                        <input type="text" id="input-nama" required
+                            placeholder="Contoh: Ahmad Fauzi, S.Pd.I. atau KH. Abdul Manaf, M.Pd."
+                            class="w-full px-3.5 py-3 rounded-xl border border-[#E5EAE7] bg-white text-sm font-medium text-[#1F2937] placeholder:text-slate-400 focus:border-[#087B52] focus:ring-4 focus:ring-[#087B52]/10 outline-none transition">
+                        <p class="text-[11px] text-[#64748B] mt-1.5 leading-relaxed">
+                            Masukkan nama lengkap beserta gelar akademik atau gelar kehormatan apabila ada. Pastikan penulisan nama sudah benar.
+                        </p>
+                    </div>
+
+                    <!-- 2. Sesi Kehadiran & 3. Jenis Petugas -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="input-sesi" class="block text-xs font-bold uppercase tracking-wide text-[#1F2937] mb-1.5">
+                                Sesi Kehadiran <span class="text-[#DC2626]">*</span>
+                            </label>
+                            <div class="relative">
+                                <select id="input-sesi" required
+                                    class="w-full px-3.5 py-3 rounded-xl border border-[#E5EAE7] bg-white text-sm font-medium text-[#1F2937] focus:border-[#087B52] focus:ring-4 focus:ring-[#087B52]/10 outline-none appearance-none transition">
+                                    <option value="" disabled selected>Pilih Sesi...</option>
+                                    <option value="Sesi I|08.00–12.00 WIB">Sesi I (08.00–12.00 WIB)</option>
+                                    <option value="Sesi II|13.00–16.00 WIB">Sesi II (13.00–16.00 WIB)</option>
+                                    <option value="Sesi Tour Guide|08.00–16.00 WIB">Sesi Tour Guide (08.00–16.00 WIB)</option>
+                                </select>
+                                <i data-lucide="chevron-down" class="w-4 h-4 text-[#64748B] absolute right-3.5 top-3.5 pointer-events-none"></i>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="input-jenis" class="block text-xs font-bold uppercase tracking-wide text-[#1F2937] mb-1.5">
+                                Jenis Petugas <span class="text-[#DC2626]">*</span>
+                            </label>
+                            <div class="relative">
+                                <select id="input-jenis" required
+                                    class="w-full px-3.5 py-3 rounded-xl border border-[#E5EAE7] bg-white text-sm font-medium text-[#1F2937] focus:border-[#087B52] focus:ring-4 focus:ring-[#087B52]/10 outline-none appearance-none transition">
+                                    <option value="" disabled selected>Pilih Jenis...</option>
+                                    <option value="Piket">Piket</option>
+                                    <option value="Tour Guide">Tour Guide</option>
+                                </select>
+                                <i data-lucide="chevron-down" class="w-4 h-4 text-[#64748B] absolute right-3.5 top-3.5 pointer-events-none"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Dokumentasi Kamera Depan -->
+                    <div class="pt-4 border-t border-[#E5EAE7]">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-xs font-bold uppercase tracking-wide text-[#1F2937]">
+                                Foto Selfie (Kamera Depan) <span class="text-[#DC2626]">*</span>
+                            </label>
+                            <span id="camera-badge" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-[#64748B]">
+                                Belum Diambil
+                            </span>
+                        </div>
+
+                        <!-- Viewport Kamera -->
+                        <div class="relative w-full aspect-[4/3] max-h-72 bg-slate-900 rounded-2xl overflow-hidden border border-[#E5EAE7] flex items-center justify-center">
+                            <div id="camera-placeholder" class="text-center p-6">
+                                <div class="w-12 h-12 rounded-2xl bg-white/10 text-slate-300 flex items-center justify-center mx-auto mb-2.5">
+                                    <i data-lucide="camera" class="w-6 h-6"></i>
+                                </div>
+                                <p class="text-xs font-medium text-slate-300">Kamera depan belum aktif</p>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Tekan tombol di bawah untuk mengambil foto langsung</p>
+                            </div>
+
+                            <video id="camera-preview" autoplay playsinline muted class="hidden w-full h-full object-cover"></video>
+                            <img id="photo-result" alt="Hasil Foto Selfie Petugas" class="hidden w-full h-full object-cover">
+
+                            <!-- Bingkai Panduan Wajah -->
+                            <div id="face-guide" class="hidden absolute inset-0 pointer-events-none flex items-center justify-center">
+                                <div class="w-40 h-52 border-2 border-dashed border-[#C6A45B]/80 rounded-[50%]"></div>
+                            </div>
+                        </div>
+
+                        <canvas id="photo-canvas" class="hidden"></canvas>
+
+                        <!-- Kontrol Tombol Kamera -->
+                        <div class="flex gap-2.5 mt-3">
+                            <button type="button" id="btn-start-camera" onclick="startFrontCamera()"
+                                class="flex-1 py-3 px-4 rounded-xl bg-[#087B52] hover:bg-[#075C40] text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm transition">
+                                <i data-lucide="video" class="w-4 h-4"></i> AKTIFKAN KAMERA
+                            </button>
+
+                            <button type="button" id="btn-capture-photo" onclick="captureFrontPhoto()"
+                                class="hidden flex-1 py-3 px-4 rounded-xl bg-[#C6A45B] hover:bg-[#b59249] text-slate-950 text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 shadow-sm transition">
+                                <i data-lucide="camera" class="w-4 h-4"></i> AMBIL FOTO
+                            </button>
+
+                            <button type="button" id="btn-retake-photo" onclick="retakeFrontPhoto()"
+                                class="hidden flex-1 py-3 px-4 rounded-xl bg-slate-700 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition">
+                                <i data-lucide="rotate-ccw" class="w-4 h-4"></i> ULANGI FOTO
+                            </button>
+                        </div>
+
+                        <div id="camera-error-msg" class="hidden mt-2.5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-[#DC2626] text-xs font-medium leading-relaxed"></div>
+                    </div>
+
+                    <!-- 5. Verifikasi GPS & Geofencing (watchPosition + Pre-Submit Fresh Check) -->
+                    <div class="pt-4 border-t border-[#E5EAE7]">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-xs font-bold uppercase tracking-wide text-[#1F2937]">
+                                Verifikasi Lokasi GPS <span class="text-[#DC2626]">*</span>
+                            </label>
+                            <button type="button" onclick="startGpsWatcher(true)"
+                                class="inline-flex items-center gap-1.5 text-xs font-bold text-[#087B52] hover:text-[#075C40] bg-[#E8F5EF] px-3 py-1.5 rounded-lg transition">
+                                <i data-lucide="crosshair" class="w-3.5 h-3.5"></i> Perbarui Lokasi
+                            </button>
+                        </div>
+
+                        <div id="gps-status-card" class="p-4 rounded-2xl border border-[#E5EAE7] bg-[#F5F7F6] transition-all">
+                            <div class="flex items-start gap-3">
+                                <div id="gps-icon-box" class="w-10 h-10 rounded-xl bg-white border border-[#E5EAE7] text-[#64748B] flex items-center justify-center shrink-0">
+                                    <i data-lucide="navigation" class="w-5 h-5"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <h4 id="gps-status-title" class="text-sm font-bold text-[#1F2937]">Mencari lokasi...</h4>
+                                        <span id="gps-distance-badge" class="hidden text-xs font-extrabold px-2.5 py-0.5 rounded-full">0 m</span>
+                                    </div>
+                                    <p id="gps-status-desc" class="text-xs text-[#64748B] mt-1 leading-relaxed">
+                                        Memantau kestabilan sinyal satelit GPS perangkat Anda...
+                                    </p>
+
+                                    <!-- Parameter Diagnostik GPS -->
+                                    <div id="gps-details" class="hidden mt-3 pt-3 border-t border-[#E5EAE7] grid grid-cols-2 gap-2.5 text-[11px]">
+                                        <div class="bg-white p-2 rounded-lg border border-[#E5EAE7]">
+                                            <span class="text-[#64748B] block">Jarak ke Pesantren</span>
+                                            <span id="gps-detail-distance" class="font-bold text-[#1F2937]">-</span>
+                                        </div>
+                                        <div class="bg-white p-2 rounded-lg border border-[#E5EAE7]">
+                                            <span class="text-[#64748B] block">Akurasi GPS (Maks 20m)</span>
+                                            <span id="gps-detail-accuracy" class="font-bold text-[#1F2937]">-</span>
+                                        </div>
+                                        <div class="col-span-2 bg-white p-2 rounded-lg border border-[#E5EAE7]">
+                                            <span class="text-[#64748B] block">Koordinat GPS</span>
+                                            <span id="gps-detail-coords" class="font-mono text-[#1F2937]">-</span>
+                                        </div>
+                                        <div class="col-span-2 bg-white p-2 rounded-lg border border-[#E5EAE7]">
+                                            <span class="text-[#64748B] block">Lokasi Terdeteksi</span>
+                                            <span id="gps-detail-address" class="font-medium text-[#1F2937]">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pesan Penolakan Luar Radius -->
+                        <div id="geofence-reject-box" class="hidden mt-3 p-4 rounded-2xl bg-[#DC2626] text-white shadow-sm">
+                            <div class="flex items-start gap-3">
+                                <i data-lucide="shield-alert" class="w-5 h-5 shrink-0 mt-0.5"></i>
+                                <div class="text-xs leading-relaxed">
+                                    <p class="font-bold text-sm">ABSENSI TIDAK DAPAT DILAKUKAN.</p>
+                                    <p class="mt-0.5 text-rose-100">Anda berada di luar area Pondok Pesantren At-Tawazun. Silakan menuju lingkungan pesantren untuk melakukan absensi.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tombol Submit Utama -->
+                    <div class="pt-2">
+                        <button type="submit" id="btn-submit-absensi" disabled
+                            class="w-full py-4 px-6 rounded-xl bg-[#087B52] hover:bg-[#075C40] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-extrabold text-sm shadow-md transition flex items-center justify-center gap-2">
+                            <i data-lucide="send" class="w-4 h-4"></i>
+                            <span id="btn-submit-text">KIRIM ABSENSI</span>
+                        </button>
+                        <p class="text-[11px] text-center text-[#64748B] mt-2">
+                            Sistem akan memverifikasi ulang koordinat GPS terbaru & mencatat waktu server WIB saat pengiriman.
+                        </p>
+                    </div>
+                </form>
+            </div>
+
+            <!-- VIEW B: HALAMAN SUKSES ABSENSI (Tampil setelah konfirmasi server) -->
+            <div id="petugas-success-container" class="hidden bg-white rounded-2xl border border-[#E5EAE7] shadow-card overflow-hidden">
+                <div class="bg-[#087B52] px-6 py-7 text-center text-white">
+                    <div class="w-16 h-16 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center mx-auto mb-3">
+                        <i data-lucide="check-circle-2" class="w-9 h-9 text-[#FDE68A]"></i>
+                    </div>
+                    <h2 class="text-xl font-extrabold tracking-tight">ABSENSI BERHASIL!</h2>
+                    <p class="text-xs text-emerald-100 mt-1.5 max-w-sm mx-auto leading-relaxed">
+                        Terima kasih. Data kehadiran Anda telah berhasil dicatat dalam sistem Absensi Petugas Piket PSB Pondok Pesantren At-Tawazun.
+                    </p>
+                </div>
+
+                <div class="p-6 space-y-4">
+                    <div class="bg-[#F5F7F6] rounded-2xl p-4 border border-[#E5EAE7] space-y-3 text-xs">
+                        <div class="flex justify-between items-center pb-2.5 border-b border-[#E5EAE7]">
+                            <span class="text-[#64748B]">ID Transaksi</span>
+                            <span id="succ-id" class="font-mono font-bold text-[#075C40]">-</span>
+                        </div>
+                        <div class="flex justify-between items-start gap-4">
+                            <span class="text-[#64748B] shrink-0">Nama Petugas</span>
+                            <span id="succ-nama" class="font-bold text-[#1F2937] text-right">-</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[#64748B]">Sesi Kehadiran</span>
+                            <span id="succ-sesi" class="font-semibold text-[#1F2937]">-</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[#64748B]">Jenis Petugas</span>
+                            <span id="succ-jenis" class="font-semibold text-[#1F2937]">-</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[#64748B]">Waktu Server (WIB)</span>
+                            <span id="succ-waktu" class="font-bold text-[#087B52]">-</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[#64748B]">Validasi Lokasi</span>
+                            <span id="succ-jarak" class="font-semibold text-[#16A34A]">-</span>
+                        </div>
+                    </div>
+
+                    <button type="button" onclick="resetToNewAttendance()"
+                        class="w-full py-3.5 px-5 rounded-xl bg-[#075C40] hover:bg-[#087B52] text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i> Kembali ke Halaman Absensi
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer Petugas -->
+        <footer class="py-4 px-4 text-center text-[11px] text-[#64748B] border-t border-[#E5EAE7] bg-white">
+            &copy; 2027/2028 Panitia Penerimaan Santri Baru • Pondok Pesantren At-Tawazun
+        </footer>
+    </div>
+
+
+    <!-- ===================================================================== -->
+    <!-- MODE 2: PORTAL ADMINISTRASI (MODERN ISLAMIC ADMINISTRATIVE DASHBOARD) -->
+    <!-- ===================================================================== -->
+    <div id="admin-dashboard-shell" class="hidden min-h-screen flex bg-[#F5F7F6]">
+
+        <!-- MOBILE SIDEBAR BACKDROP -->
+        <div id="sidebar-backdrop" onclick="toggleMobileSidebar(false)" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden"></div>
+
+        <!-- A. SIDEBAR KIRI (Permanen Desktop, Collapsible Tablet, Drawer Mobile) -->
+        <aside id="admin-sidebar" class="sidebar-transition fixed lg:sticky top-0 left-0 z-50 h-screen w-64 bg-white border-r border-[#E5EAE7] flex flex-col justify-between -translate-x-full lg:translate-x-0 shrink-0">
+            
+            <!-- Brand Header Sidebar -->
+            <div>
+                <div class="h-16 px-4 border-b border-[#E5EAE7] flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-9 h-9 rounded-xl bg-[#075C40] p-1 flex items-center justify-center shrink-0 border border-[#C6A45B]/40">
+                            <img id="sidebar-logo" src="https://placehold.co/100x100/075C40/C6A45B?text=AT" alt="Logo" class="w-full h-full object-contain rounded-lg">
+                        </div>
+                        <div class="sidebar-label min-w-0">
+                            <div class="text-xs font-extrabold text-[#1F2937] truncate">PSB AT-TAWAZUN</div>
+                            <div class="text-[10px] font-bold text-[#087B52]">TP 2027/2028</div>
+                        </div>
+                    </div>
+                    <button onclick="toggleSidebarCollapse()" class="hidden lg:flex p-1.5 rounded-lg text-[#64748B] hover:bg-[#F5F7F6] hover:text-[#1F2937]" title="Ciutkan / Lebarkan Sidebar">
+                        <i data-lucide="panel-left-close" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="toggleMobileSidebar(false)" class="lg:hidden p-1.5 rounded-lg text-[#64748B] hover:bg-[#F5F7F6]">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Navigasi Utama Admin (6 Menu) -->
+                <nav class="p-3 space-y-1">
+                    <button onclick="navigateAdmin('dashboard')" data-admin-nav="dashboard"
+                        class="admin-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold bg-[#E8F5EF] text-[#075C40] transition">
+                        <i data-lucide="layout-dashboard" class="w-4 h-4 shrink-0"></i>
+                        <span class="sidebar-label truncate">Dashboard</span>
+                    </button>
+
+                    <button onclick="switchMode('petugas')"
+                        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-[#64748B] hover:bg-[#F5F7F6] hover:text-[#1F2937] transition">
+                        <i data-lucide="camera" class="w-4 h-4 shrink-0"></i>
+                        <span class="sidebar-label truncate">Form Absensi</span>
+                    </button>
+
+                    <button onclick="navigateAdmin('petugas')" data-admin-nav="petugas"
+                        class="admin-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-[#64748B] hover:bg-[#F5F7F6] hover:text-[#1F2937] transition">
+                        <i data-lucide="users" class="w-4 h-4 shrink-0"></i>
+                        <span class="sidebar-label truncate">Data Petugas</span>
+                    </button>
+
+                    <button onclick="navigateAdmin('rekap')" data-admin-nav="rekap"
+                        class="admin-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-[#64748B] hover:bg-[#F5F7F6] hover:text-[#1F2937] transition">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4 shrink-0"></i>
+                        <span class="sidebar-label truncate">Rekapitulasi</span>
+                    </button>
+
+                    <button onclick="navigateAdmin('log')" data-admin-nav="log"
+                        class="admin-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-[#64748B] hover:bg-[#F5F7F6] hover:text-[#1F2937] transition">
+                        <i data-lucide="history" class="w-4 h-4 shrink-0"></i>
+                        <span class="sidebar-label truncate">Log Aktivitas</span>
+                    </button>
+
+                    <button onclick="navigateAdmin('pengaturan')" data-admin-nav="pengaturan"
+                        class="admin-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-[#64748B] hover:bg-[#F5F7F6] hover:text-[#1F2937] transition">
+                        <i data-lucide="settings" class="w-4 h-4 shrink-0"></i>
+                        <span class="sidebar-label truncate">Pengaturan</span>
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Identitas Admin & Logout di Bawah Sidebar -->
+            <div class="p-3 border-t border-[#E5EAE7] space-y-2">
+                <div class="px-3 py-2.5 rounded-xl bg-[#F5F7F6] flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-[#075C40] text-white font-bold text-xs flex items-center justify-center shrink-0">
+                        AD
+                    </div>
+                    <div class="sidebar-label min-w-0">
+                        <div class="text-xs font-bold text-[#1F2937] truncate">Admin PSB</div>
+                        <div id="sidebar-auth-status" class="text-[10px] font-semibold text-[#64748B] truncate">Belum Login</div>
+                    </div>
+                </div>
+
+                <button id="sidebar-logout-btn" onclick="logoutAdmin()" class="hidden w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-[#DC2626] hover:bg-rose-50 transition">
+                    <i data-lucide="log-out" class="w-4 h-4 shrink-0"></i>
+                    <span class="sidebar-label">Logout Admin</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- B. MAIN WRAPPER (TOPBAR + MAIN CONTENT) -->
+        <div class="flex-1 flex flex-col min-w-0">
+            
+            <!-- TOPBAR -->
+            <header class="h-16 bg-white border-b border-[#E5EAE7] px-4 lg:px-6 flex items-center justify-between gap-4 sticky top-0 z-30">
+                <div class="flex items-center gap-3 min-w-0">
+                    <button onclick="toggleMobileSidebar(true)" class="lg:hidden p-2 rounded-xl border border-[#E5EAE7] text-[#1F2937] hover:bg-[#F5F7F6]">
+                        <i data-lucide="menu" class="w-5 h-5"></i>
+                    </button>
+                    <div class="min-w-0">
+                        <h2 id="topbar-page-title" class="text-sm sm:text-base font-extrabold text-[#1F2937] truncate">Dashboard Administrasi</h2>
+                        <p id="topbar-live-datetime" class="text-[11px] text-[#64748B] truncate">Memuat waktu WIB...</p>
+                    </div>
+                </div>
+
+                <!-- Status Koneksi Database & Profil Admin -->
+                <div class="flex items-center gap-2.5 shrink-0">
+                    <div id="admin-db-badge" onclick="navigateAdmin('pengaturan')" class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-rose-50 text-[#DC2626] border border-rose-200">
+                        <span id="admin-db-dot" class="w-2 h-2 rounded-full bg-[#DC2626]"></span>
+                        <span id="admin-db-text" class="hidden sm:inline">Backend Offline</span>
+                    </div>
+
+                    <button onclick="fetchDashboardAndData(true)" title="Sinkronkan Data Google Sheets"
+                        class="p-2 rounded-xl border border-[#E5EAE7] text-[#1F2937] hover:bg-[#F5F7F6] transition">
+                        <i id="admin-refresh-icon" data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- C. AREA KONTEN ADMIN -->
+            <main class="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto space-y-6">
+
+                <!-- GATE AUTENTIKASI ADMIN (Wajib Login Server untuk Kelola Data & Pengaturan) -->
+                <div id="admin-login-gate" class="max-w-md mx-auto my-8 bg-white rounded-2xl border border-[#E5EAE7] shadow-card overflow-hidden">
+                    <div class="islamic-header-accent p-6 text-center text-white border-b border-[#C6A45B]/30">
+                        <div class="w-12 h-12 rounded-2xl bg-white/10 border border-[#C6A45B]/50 flex items-center justify-center mx-auto mb-3">
+                            <i data-lucide="lock" class="w-6 h-6 text-[#FDE68A]"></i>
+                        </div>
+                        <h3 class="text-base font-extrabold">Autentikasi Admin PSB</h3>
+                        <p class="text-xs text-emerald-100 mt-1">Verifikasi hak akses dilakukan langsung oleh server Google Apps Script.</p>
+                    </div>
+
+                    <form onsubmit="handleAdminLogin(event)" class="p-6 space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-[#1F2937] mb-1.5">URL Web App Google Apps Script</label>
+                            <input type="url" id="admin-gas-url-login" required placeholder="https://script.google.com/macros/s/.../exec"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-[#E5EAE7] text-xs font-mono focus:border-[#087B52] outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-[#1F2937] mb-1.5">Password Admin PSB</label>
+                            <input type="password" id="admin-password-input" required placeholder="Masukkan password..."
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-[#E5EAE7] text-sm focus:border-[#087B52] outline-none">
+                        </div>
+
+                        <div class="pt-1 flex gap-2.5">
+                            <button type="button" onclick="switchMode('petugas')"
+                                class="px-4 py-3 rounded-xl border border-[#E5EAE7] text-xs font-bold text-[#64748B] hover:bg-[#F5F7F6] transition">
+                                Batal
+                            </button>
+                            <button type="submit" id="btn-admin-login"
+                                class="flex-1 py-3 px-4 rounded-xl bg-[#087B52] hover:bg-[#075C40] text-white text-xs sm:text-sm font-bold shadow-sm transition flex items-center justify-center gap-2">
+                                <i data-lucide="log-in" class="w-4 h-4"></i> MASUK DASHBOARD
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- KONTEN TERAUTENTIKASI ADMIN -->
+                <div id="admin-authenticated-views" class="hidden space-y-6">
+
+                    <!-- =============================================== -->
+                    <!-- SUB-VIEW 1: DASHBOARD STATISTIK & GRAFIK        -->
+                    <!-- =============================================== -->
+                    <section id="admin-sub-dashboard" class="admin-subview space-y-6">
+                        
+                        <!-- Breadcrumb & Header -->
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <div class="text-[11px] font-semibold text-[#087B52] mb-0.5">Portal Admin &rsaquo; Ringkasan Eksekutif</div>
+                                <h1 class="text-xl font-extrabold text-[#1F2937]">Dashboard Kehadiran PSB 2027/2028</h1>
+                                <p class="text-xs text-[#64748B] mt-0.5">Statistik aktual langsung dari database Google Sheets Pondok Pesantren At-Tawazun.</p>
+                            </div>
+                            <a id="admin-open-gsheet-btn" href="#" target="_blank" class="hidden inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#E5EAE7] hover:border-[#087B52] text-xs font-bold text-[#1F2937] shadow-soft transition">
+                                <i data-lucide="external-link" class="w-4 h-4 text-[#087B52]"></i> Buka Google Sheets
+                            </a>
+                        </div>
+
+                        <!-- 4 Statistic Cards Utama -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                            <div class="bg-white p-5 rounded-2xl border border-[#E5EAE7] shadow-soft flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs font-semibold text-[#64748B]">Total Absensi</p>
+                                    <p id="adm-stat-total" class="text-2xl font-extrabold text-[#1F2937] mt-1">0</p>
+                                    <span class="text-[11px] text-[#087B52] font-medium">Seluruh rekaman</span>
+                                </div>
+                                <div class="w-12 h-12 rounded-2xl bg-[#E8F5EF] text-[#087B52] flex items-center justify-center">
+                                    <i data-lucide="clipboard-check" class="w-6 h-6"></i>
+                                </div>
+                            </div>
+
+                            <div class="bg-white p-5 rounded-2xl border border-[#E5EAE7] shadow-soft flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs font-semibold text-[#64748B]">Absensi Hari Ini</p>
+                                    <p id="adm-stat-today" class="text-2xl font-extrabold text-[#1F2937] mt-1">0</p>
+                                    <span class="text-[11px] text-[#16A34A] font-medium">Hari ini (WIB)</span>
+                                </div>
+                                <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-[#16A34A] flex items-center justify-center">
+                                    <i data-lucide="calendar-check" class="w-6 h-6"></i>
+                                </div>
+                            </div>
+
+                            <div class="bg-white p-5 rounded-2xl border border-[#E5EAE7] shadow-soft flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs font-semibold text-[#64748B]">Petugas Piket</p>
+                                    <p id="adm-stat-piket" class="text-2xl font-extrabold text-[#1F2937] mt-1">0</p>
+                                    <span class="text-[11px] text-[#64748B] font-medium">Kehadiran Piket</span>
+                                </div>
+                                <div class="w-12 h-12 rounded-2xl bg-blue-50 text-[#2563EB] flex items-center justify-center">
+                                    <i data-lucide="user-check" class="w-6 h-6"></i>
+                                </div>
+                            </div>
+
+                            <div class="bg-white p-5 rounded-2xl border border-[#E5EAE7] shadow-soft flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs font-semibold text-[#64748B]">Petugas Tour Guide</p>
+                                    <p id="adm-stat-tg" class="text-2xl font-extrabold text-[#1F2937] mt-1">0</p>
+                                    <span class="text-[11px] text-[#D97706] font-medium">Kehadiran Pemandu</span>
+                                </div>
+                                <div class="w-12 h-12 rounded-2xl bg-amber-50 text-[#D97706] flex items-center justify-center">
+                                    <i data-lucide="compass" class="w-6 h-6"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3 Kartu Statistik Sesi -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div class="bg-white px-5 py-4 rounded-2xl border border-[#E5EAE7] shadow-soft flex items-center justify-between">
+                                <div>
+                                    <span class="text-xs font-bold text-[#1F2937]">Sesi I</span>
+                                    <span class="block text-[11px] text-[#64748B]">08.00–12.00 WIB</span>
+                                </div>
+                                <span id="adm-stat-s1" class="text-xl font-extrabold text-[#087B52]">0</span>
+                            </div>
+
+                            <div class="bg-white px-5 py-4 rounded-2xl border border-[#E5EAE7] shadow-soft flex items-center justify-between">
+                                <div>
+                                    <span class="text-xs font-bold text-[#1F2937]">Sesi II</span>
+                                    <span class="block text-[11px] text-[#64748B]">13.00–16.00 WIB</span>
+                                </div>
+                                <span id="adm-stat-s2" class="text-xl font-extrabold text-[#D97706]">0</span>
+                            </div>
+
+                            <div class="bg-white px-5 py-4 rounded-2xl border border-[#E5EAE7] shadow-soft flex items-center justify-between">
+                                <div>
+                                    <span class="text-xs font-bold text-[#1F2937]">Sesi Tour Guide</span>
+                                    <span class="block text-[11px] text-[#64748B]">08.00–16.00 WIB</span>
+                                </div>
+                                <span id="adm-stat-stg" class="text-xl font-extrabold text-[#2563EB]">0</span>
+                            </div>
+                        </div>
+
+                        <!-- Visualisasi Grafik & Aktivitas Terbaru -->
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <!-- Grafik Absensi Berdasarkan Tanggal & Sesi -->
+                            <div class="lg:col-span-2 bg-white p-5 sm:p-6 rounded-2xl border border-[#E5EAE7] shadow-soft">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div>
+                                        <h3 class="text-sm font-bold text-[#1F2937]">Grafik Kehadiran Berdasarkan Tanggal & Sesi</h3>
+                                        <p class="text-xs text-[#64748B]">Distribusi kehadiran petugas per hari (data aktual)</p>
+                                    </div>
+                                </div>
+                                <div class="h-64 w-full">
+                                    <canvas id="admin-attendance-chart"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Aktivitas Absensi Terbaru -->
+                            <div class="bg-white p-5 sm:p-6 rounded-2xl border border-[#E5EAE7] shadow-soft flex flex-col">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="text-sm font-bold text-[#1F2937]">Aktivitas Terbaru</h3>
+                                    <button onclick="navigateAdmin('rekap')" class="text-xs font-bold text-[#087B52] hover:underline">Semua &rarr;</button>
+                                </div>
+                                <div id="dashboard-recent-list" class="space-y-3 flex-1 overflow-y-auto max-h-64">
+                                    <p class="text-xs text-[#64748B] text-center py-8">Belum ada data absensi.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- =============================================== -->
+                    <!-- SUB-VIEW 2: DATA PETUGAS (AKTUAL DARI DATABASE) -->
+                    <!-- =============================================== -->
+                    <section id="admin-sub-petugas" class="admin-subview hidden space-y-5">
+                        <div>
+                            <div class="text-[11px] font-semibold text-[#087B52] mb-0.5">Portal Admin &rsaquo; Direktori Kehadiran</div>
+                            <h1 class="text-xl font-extrabold text-[#1F2937]">Data Petugas Piket & Tour Guide</h1>
+                            <p class="text-xs text-[#64748B] mt-0.5">Ringkasan petugas yang tercatat aktif melakukan absensi dalam database PSB 2027/2028.</p>
+                        </div>
+
+                        <div class="bg-white rounded-2xl border border-[#E5EAE7] shadow-soft p-5 space-y-4">
+                            <div class="flex flex-col sm:flex-row gap-3 justify-between">
+                                <div class="relative flex-1 max-w-sm">
+                                    <i data-lucide="search" class="w-4 h-4 text-[#64748B] absolute left-3.5 top-2.5"></i>
+                                    <input type="text" id="petugas-dir-search" oninput="renderDataPetugasTable()" placeholder="Cari nama petugas..."
+                                        class="w-full pl-10 pr-3.5 py-2 rounded-xl border border-[#E5EAE7] text-xs outline-none focus:border-[#087B52]">
+                                </div>
+                                <select id="petugas-dir-jenis" onchange="renderDataPetugasTable()"
+                                    class="px-3.5 py-2 rounded-xl border border-[#E5EAE7] text-xs bg-white outline-none focus:border-[#087B52]">
+                                    <option value="">Semua Jenis Petugas</option>
+                                    <option value="Piket">Piket</option>
+                                    <option value="Tour Guide">Tour Guide</option>
+                                </select>
+                            </div>
+
+                            <div class="overflow-x-auto rounded-xl border border-[#E5EAE7]">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-[#F5F7F6] text-[#64748B] text-[11px] uppercase tracking-wider border-b border-[#E5EAE7]">
+                                            <th class="py-3 px-4 font-bold">No</th>
+                                            <th class="py-3 px-4 font-bold">Nama Lengkap & Gelar</th>
+                                            <th class="py-3 px-4 font-bold">Jenis Petugas</th>
+                                            <th class="py-3 px-4 font-bold">Sesi Terakhir</th>
+                                            <th class="py-3 px-4 font-bold">Total Kehadiran</th>
+                                            <th class="py-3 px-4 font-bold">Absensi Terakhir</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="data-petugas-tbody" class="divide-y divide-[#E5EAE7] text-xs text-[#1F2937]">
+                                        <tr><td colspan="6" class="py-8 text-center text-[#64748B]">Memuat data...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- =============================================== -->
+                    <!-- SUB-VIEW 3: REKAPITULASI ABSENSI & EKSPOR       -->
+                    <!-- =============================================== -->
+                    <section id="admin-sub-rekap" class="admin-subview hidden space-y-5">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <div class="text-[11px] font-semibold text-[#087B52] mb-0.5">Portal Admin &rsaquo; Laporan Kehadiran</div>
+                                <h1 class="text-xl font-extrabold text-[#1F2937]">Rekapitulasi Absensi Petugas</h1>
+                                <p class="text-xs text-[#64748B] mt-0.5">Data diurutkan dari yang terbaru. Dilengkapi dokumentasi foto, GPS, dan ekspor Spreadsheet.</p>
+                            </div>
+
+                            <!-- Dropdown Ekspor XLSX & CSV -->
+                            <div class="relative inline-block">
+                                <button onclick="toggleExportMenu()" class="px-4 py-2.5 rounded-xl bg-[#087B52] hover:bg-[#075C40] text-white text-xs font-bold flex items-center gap-2 shadow-sm transition">
+                                    <i data-lucide="download" class="w-4 h-4 text-[#FDE68A]"></i> EKSPOR DATA <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+                                </button>
+                                <div id="export-dropdown" class="hidden absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-[#E5EAE7] py-1.5 z-30">
+                                    <button onclick="exportData('xlsx', 'filtered')" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-[#1F2937] hover:bg-[#E8F5EF] flex items-center gap-2">
+                                        <i data-lucide="file-spreadsheet" class="w-4 h-4 text-[#087B52]"></i> Excel (.xlsx) - Data Terfilter
+                                    </button>
+                                    <button onclick="exportData('xlsx', 'all')" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-[#1F2937] hover:bg-[#E8F5EF] flex items-center gap-2">
+                                        <i data-lucide="file-spreadsheet" class="w-4 h-4 text-[#087B52]"></i> Excel (.xlsx) - Semua Data
+                                    </button>
+                                    <div class="border-t border-[#E5EAE7] my-1"></div>
+                                    <button onclick="exportData('csv', 'filtered')" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-[#1F2937] hover:bg-[#E8F5EF] flex items-center gap-2">
+                                        <i data-lucide="file-text" class="w-4 h-4 text-[#2563EB]"></i> CSV - Data Terfilter
+                                    </button>
+                                    <button onclick="exportData('csv', 'all')" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-[#1F2937] hover:bg-[#E8F5EF] flex items-center gap-2">
+                                        <i data-lucide="file-text" class="w-4 h-4 text-[#2563EB]"></i> CSV - Semua Data
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-2xl border border-[#E5EAE7] shadow-soft p-5 space-y-4">
+                            <!-- Filter Bar -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 bg-[#F5F7F6] p-3.5 rounded-xl border border-[#E5EAE7]">
+                                <div class="lg:col-span-2">
+                                    <label class="block text-[10px] font-bold uppercase text-[#64748B] mb-1">Cari Nama</label>
+                                    <input type="text" id="filter-nama" oninput="applyFilters()" placeholder="Ketik nama petugas..."
+                                        class="w-full px-3 py-2 rounded-lg border border-[#E5EAE7] text-xs bg-white outline-none focus:border-[#087B52]">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase text-[#64748B] mb-1">Dari Tanggal</label>
+                                    <input type="date" id="filter-date-start" onchange="applyFilters()"
+                                        class="w-full px-3 py-2 rounded-lg border border-[#E5EAE7] text-xs bg-white outline-none focus:border-[#087B52]">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase text-[#64748B] mb-1">Sampai Tanggal</label>
+                                    <input type="date" id="filter-date-end" onchange="applyFilters()"
+                                        class="w-full px-3 py-2 rounded-lg border border-[#E5EAE7] text-xs bg-white outline-none focus:border-[#087B52]">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase text-[#64748B] mb-1">Sesi</label>
+                                    <select id="filter-sesi" onchange="applyFilters()"
+                                        class="w-full px-3 py-2 rounded-lg border border-[#E5EAE7] text-xs bg-white outline-none focus:border-[#087B52]">
+                                        <option value="">Semua Sesi</option>
+                                        <option value="Sesi I">Sesi I</option>
+                                        <option value="Sesi II">Sesi II</option>
+                                        <option value="Sesi Tour Guide">Sesi Tour Guide</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase text-[#64748B] mb-1">Jenis & Status</label>
+                                    <div class="flex gap-1.5">
+                                        <select id="filter-jenis" onchange="applyFilters()"
+                                            class="w-1/2 px-2 py-2 rounded-lg border border-[#E5EAE7] text-xs bg-white outline-none focus:border-[#087B52]">
+                                            <option value="">Jenis</option>
+                                            <option value="Piket">Piket</option>
+                                            <option value="Tour Guide">Tour Guide</option>
+                                        </select>
+                                        <select id="filter-status" onchange="applyFilters()"
+                                            class="w-1/2 px-2 py-2 rounded-lg border border-[#E5EAE7] text-xs bg-white outline-none focus:border-[#087B52]">
+                                            <option value="">Status</option>
+                                            <option value="TERVERIFIKASI">Valid</option>
+                                            <option value="DITOLAK">Ditolak</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-[#64748B]">Menampilkan <strong id="rekap-showing-info" class="text-[#1F2937]">0</strong> data</span>
+                                <button onclick="resetFilters()" class="text-xs font-bold text-[#DC2626] hover:underline flex items-center gap-1">
+                                    <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Reset Filter
+                                </button>
+                            </div>
+
+                            <!-- Tabel Rekapitulasi -->
+                            <div class="overflow-x-auto rounded-xl border border-[#E5EAE7]">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-[#075C40] text-white text-[11px] uppercase tracking-wider">
+                                            <th class="py-3 px-3 font-bold">No</th>
+                                            <th class="py-3 px-3 font-bold">Tanggal</th>
+                                            <th class="py-3 px-3 font-bold">Jam</th>
+                                            <th class="py-3 px-3 font-bold">Nama Petugas</th>
+                                            <th class="py-3 px-3 font-bold">Sesi</th>
+                                            <th class="py-3 px-3 font-bold">Jenis</th>
+                                            <th class="py-3 px-3 font-bold">Lokasi</th>
+                                            <th class="py-3 px-3 font-bold text-center">Foto</th>
+                                            <th class="py-3 px-3 font-bold">Status</th>
+                                            <th class="py-3 px-3 font-bold text-center">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="rekap-table-body" class="divide-y divide-[#E5EAE7] text-xs text-[#1F2937]">
+                                        <tr><td colspan="10" class="py-10 text-center text-[#64748B]">Belum ada data tersedia.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Pagination Controls -->
+                            <div class="flex items-center justify-between pt-2">
+                                <span id="pagination-info" class="text-xs text-[#64748B]">Halaman 1 dari 1</span>
+                                <div class="flex gap-2">
+                                    <button id="btn-prev-page" onclick="changeRekapPage(-1)" disabled
+                                        class="px-3 py-1.5 rounded-lg border border-[#E5EAE7] text-xs font-bold text-[#1F2937] disabled:opacity-40 hover:bg-[#F5F7F6]">
+                                        &larr; Sebelumnya
+                                    </button>
+                                    <button id="btn-next-page" onclick="changeRekapPage(1)" disabled
+                                        class="px-3 py-1.5 rounded-lg border border-[#E5EAE7] text-xs font-bold text-[#1F2937] disabled:opacity-40 hover:bg-[#F5F7F6]">
+                                        Berikutnya &rarr;
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- =============================================== -->
+                    <!-- SUB-VIEW 4: LOG AKTIVITAS & KEAMANAN            -->
+                    <!-- =============================================== -->
+                    <section id="admin-sub-log" class="admin-subview hidden space-y-5">
+                        <div>
+                            <div class="text-[11px] font-semibold text-[#087B52] mb-0.5">Portal Admin &rsaquo; Audit Keamanan</div>
+                            <h1 class="text-xl font-extrabold text-[#1F2937]">Log Aktivitas & Anomali Sistem</h1>
+                            <p class="text-xs text-[#64748B] mt-0.5">Rekaman transaksi absensi, penolakan geofencing, anomali akurasi GPS, dan aktivitas Admin.</p>
+                        </div>
+
+                        <div class="bg-white rounded-2xl border border-[#E5EAE7] shadow-soft p-5 space-y-4">
+                            <div id="log-source-note" class="text-xs text-[#64748B] bg-[#F5F7F6] p-3 rounded-xl border border-[#E5EAE7]">
+                                Menampilkan log dari database & rekaman transaksi aktual.
+                            </div>
+
+                            <div class="overflow-x-auto rounded-xl border border-[#E5EAE7]">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-[#F5F7F6] text-[#64748B] text-[11px] uppercase tracking-wider border-b border-[#E5EAE7]">
+                                            <th class="py-3 px-4 font-bold">Waktu Kejadian (WIB)</th>
+                                            <th class="py-3 px-4 font-bold">Petugas / Aktor</th>
+                                            <th class="py-3 px-4 font-bold">Jenis Aktivitas</th>
+                                            <th class="py-3 px-4 font-bold">Keterangan</th>
+                                            <th class="py-3 px-4 font-bold">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="activity-log-tbody" class="divide-y divide-[#E5EAE7] text-xs text-[#1F2937]">
+                                        <tr><td colspan="5" class="py-8 text-center text-[#64748B]">Memuat log aktivitas...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- =============================================== -->
+                    <!-- SUB-VIEW 5: PENGATURAN SISTEM & GEOFENCING      -->
+                    <!-- =============================================== -->
+                    <section id="admin-sub-pengaturan" class="admin-subview hidden space-y-6">
+                        <div>
+                            <div class="text-[11px] font-semibold text-[#087B52] mb-0.5">Portal Admin &rsaquo; Konfigurasi Sistem</div>
+                            <h1 class="text-xl font-extrabold text-[#1F2937]">Pengaturan Aplikasi & Geofencing</h1>
+                            <p class="text-xs text-[#64748B] mt-0.5">Perubahan pengaturan disimpan langsung ke PropertiesService server Google Apps Script.</p>
+                        </div>
+
+                        <form onsubmit="saveAdminSettings(event)" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            
+                            <!-- A. Identitas Aplikasi -->
+                            <div class="bg-white p-5 sm:p-6 rounded-2xl border border-[#E5EAE7] shadow-soft space-y-4">
+                                <h3 class="text-sm font-bold text-[#1F2937] pb-3 border-b border-[#E5EAE7] flex items-center gap-2">
+                                    <i data-lucide="building-2" class="w-4 h-4 text-[#087B52]"></i> A. Identitas Aplikasi
+                                </h3>
+                                <div>
+                                    <label class="block text-xs font-bold text-[#1F2937] mb-1">Nama Aplikasi</label>
+                                    <input type="text" readonly value="ABSENSI PETUGAS PIKET PSB - PONDOK PESANTREN AT-TAWAZUN"
+                                        class="w-full px-3.5 py-2.5 rounded-xl border border-[#E5EAE7] bg-[#F5F7F6] text-xs font-semibold text-[#64748B]">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-[#1F2937] mb-1">Tahun Pelajaran</label>
+                                    <input type="text" readonly value="2027/2028"
+                                        class="w-full px-3.5 py-2.5 rounded-xl border border-[#E5EAE7] bg-[#F5F7F6] text-xs font-semibold text-[#64748B]">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-[#1F2937] mb-1">Unggah / Ganti Logo Pesantren</label>
+                                    <input type="file" id="cfg-logo-file" accept="image/png, image/jpeg, image/webp" onchange="previewLogoUpload(event)"
+                                        class="w-full text-xs text-[#64748B] file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#E8F5EF] file:text-[#075C40] hover:file:bg-emerald-100">
+                                </div>
+                            </div>
+
+                            <!-- B. Pengaturan Lokasi Geofencing -->
+                            <div class="bg-white p-5 sm:p-6 rounded-2xl border border-[#E5EAE7] shadow-soft space-y-4">
+                                <h3 class="text-sm font-bold text-[#1F2937] pb-3 border-b border-[#E5EAE7] flex items-center gap-2">
+                                    <i data-lucide="map-pin" class="w-4 h-4 text-[#087B52]"></i> B. Pengaturan Lokasi & Geofencing
+                                </h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-bold text-[#1F2937] mb-1">Latitude Pusat</label>
+                                        <input type="text" id="cfg-lat" required value="-6.523896607171603"
+                                            class="w-full px-3.5 py-2.5 rounded-xl border border-[#E5EAE7] text-xs font-mono focus:border-[#087B52] outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-[#1F2937] mb-1">Longitude Pusat</label>
+                                        <input type="text" id="cfg-lng" required value="107.675346970221"
+                                            class="w-full px-3.5 py-2.5 rounded-xl border border-[#E5EAE7] text-xs font-mono focus:border-[#087B52] outline-none">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-bold text-[#1F2937] mb-1">Radius Geofencing (Meter)</label>
+                                        <input type="number" id="cfg-radius" required min="5" max="1000" value="30"
+                                            class="w-full px-3.5 py-2.5 rounded-xl border border-[#E5EAE7] text-xs font-bold focus:border-[#087B52] outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-[#1F2937] mb-1">Batas Akurasi GPS (Meter)</label>
+                                        <input type="number" id="cfg-max-acc" required min="5" max="100" value="20"
+                                            class="w-full px-3.5 py-2.5 rounded-xl border border-[#E5EAE7] text-xs font-bold focus:border-[#087B52] outline-none">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- C. Pengaturan Akun Admin -->
+                            <div class="bg-white p-5 sm:p-6 rounded-2xl border border-[#E5EAE7] shadow-soft space-y-4">
+                                <h3 class="text-sm font-bold text-[#1F2937] pb-3 border-b border-[#E5EAE7] flex items-center gap-2">
+                                    <i data-lucide="key-round" class="w-4 h-4 text-[#087B52]"></i> C. Pengaturan Akun Admin
+                                </h3>
+                                <div>
+                                    <label class="block text-xs font-bold text-[#1F2937] mb-1">Ganti Password Admin Baru (Opsional)</label>
+                                    <input type="password" id="cfg-new-password" placeholder="Kosongkan jika tidak mengubah password"
+                                        class="w-full px-3.5 py-2.5 rounded-xl border border-[#E5EAE7] text-xs focus:border-[#087B52] outline-none">
+                                    <p class="text-[11px] text-[#64748B] mt-1">Minimal 6 karakter. Disimpan aman di PropertiesService Google Apps Script.</p>
+                                </div>
+                                <button type="submit" id="btn-save-settings"
+                                    class="w-full py-3 px-5 rounded-xl bg-[#087B52] hover:bg-[#075C40] text-white font-bold text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-2">
+                                    <i data-lucide="save" class="w-4 h-4"></i> SIMPAN PENGATURAN KE SERVER
+                                </button>
+                            </div>
+
+                            <!-- D. Konfigurasi & Status Sistem -->
+                            <div class="bg-white p-5 sm:p-6 rounded-2xl border border-[#E5EAE7] shadow-soft space-y-4">
+                                <h3 class="text-sm font-bold text-[#1F2937] pb-3 border-b border-[#E5EAE7] flex items-center gap-2">
+                                    <i data-lucide="server" class="w-4 h-4 text-[#087B52]"></i> D. Status Konfigurasi Sistem
+                                </h3>
+                                <div class="space-y-2.5 text-xs">
+                                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-[#F5F7F6]">
+                                        <span class="text-[#64748B]">Backend Google Apps Script</span>
+                                        <span id="sys-status-gas" class="font-bold text-[#16A34A]">Terhubung</span>
+                                    </div>
+                                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-[#F5F7F6]">
+                                        <span class="text-[#64748B]">Database Google Sheets</span>
+                                        <span id="sys-status-sheets" class="font-bold text-[#16A34A]">Aktif (DATA ABSENSI)</span>
+                                    </div>
+                                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-[#F5F7F6]">
+                                        <span class="text-[#64748B]">Storage Google Drive</span>
+                                        <span class="font-bold text-[#16A34A]">Aktif (Auto Folder)</span>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="toggleBackendCodeModal()"
+                                    class="w-full py-2.5 px-4 rounded-xl border border-[#E5EAE7] hover:bg-[#F5F7F6] text-xs font-bold text-[#1F2937] flex items-center justify-center gap-2 transition">
+                                    <i data-lucide="code-2" class="w-4 h-4 text-[#087B52]"></i> Lihat Kode Referensi Backend (Code.gs)
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- JAVASCRIPT ES6+ APPLICATION LOGIC                                     -->
+    <!-- ===================================================================== -->
+    <script>
+        // ==========================================
+        // 1. KONFIGURASI & STATE APLIKASI
+        // ==========================================
+        const DEFAULT_CONFIG = {
+            centerLat: -6.523896607171603,
+            centerLng: 107.675346970221,
+            radiusMeters: 30,
+            maxAccuracyMeters: 20,
+            logoUrl: "https://placehold.co/150x150/075C40/C6A45B?text=AT-TAWAZUN"
+        };
+
+        const APP_STATE = {
+            mode: 'petugas', // 'petugas' (standalone) | 'admin' (dashboard)
+            adminSubView: 'dashboard',
+            gasUrl: localStorage.getItem('psb_attawazun_gas_url') || 'https://script.google.com/macros/s/AKfycbw6ImWDCGRQwXB01Bu0ZwtXSXz_5Y8-l1_71pH9Qj08Rq6MUAikva-LtnmtYH9jdyMdyw/exec',
+            config: { ...DEFAULT_CONFIG },
+            isDbConnected: false,
+            spreadsheetUrl: '',
+            records: [],
+            filteredRecords: [],
+            backendLogs: [], // Jika backend mengirimkan log
+            rekapPage: 1,
+            rekapPerPage: 10,
+            // Camera State
+            mediaStream: null,
+            capturedPhotoBase64: null,
+            // GPS & Geofencing State (watchPosition + Fresh Pre-Submit)
+            gps: {
+                watchId: null,
+                isWatching: false,
+                lat: null,
+                lng: null,
+                accuracy: null,
+                distance: null,
+                isVerified: false,
+                address: '',
+                lastUpdatedAt: 0
+            },
+            // Admin Session State
+            adminToken: sessionStorage.getItem('psb_admin_token') || null,
+            isSubmitting: false,
+            chartInstance: null,
+            sidebarCollapsed: false
+        };
+
+        // ==========================================
+        // 2. INISIALISASI APLIKASI & JAM WIB REALTIME
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide) lucide.createIcons();
+
+            if (APP_STATE.gasUrl) {
+                document.getElementById('admin-gas-url-login').value = APP_STATE.gasUrl;
+            }
+
+            startWibClock();
+            applyLogoAndConfigUI();
+
+            // Mulai pemantauan GPS untuk halaman Petugas
+            startGpsWatcher(false);
+
+            if (APP_STATE.gasUrl) {
+                fetchDashboardAndData(false);
+            } else {
+                updateDbStatusUI(false, "Backend Belum Terhubung");
+            }
+        });
+
+        function startWibClock() {
+            const updateClock = () => {
+                const now = new Date();
+                const dateStr = new Intl.DateTimeFormat('id-ID', {
+                    timeZone: 'Asia/Jakarta',
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                }).format(now);
+                const timeStr = new Intl.DateTimeFormat('id-ID', {
+                    timeZone: 'Asia/Jakarta',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                }).format(now).replace(/\./g, ':');
+
+                const pDate = document.getElementById('petugas-live-date');
+                const pClock = document.getElementById('petugas-live-clock');
+                const tDateTime = document.getElementById('topbar-live-datetime');
+
+                if (pDate) pDate.textContent = dateStr;
+                if (pClock) pClock.textContent = timeStr;
+                if (tDateTime) tDateTime.textContent = `${dateStr} • ${timeStr} WIB`;
+            };
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+
+        function applyLogoAndConfigUI() {
+            const logo = APP_STATE.config.logoUrl || DEFAULT_CONFIG.logoUrl;
+            document.getElementById('petugas-logo').src = logo;
+            document.getElementById('sidebar-logo').src = logo;
+            document.getElementById('petugas-radius-label').textContent = APP_STATE.config.radiusMeters;
+
+            document.getElementById('cfg-lat').value = APP_STATE.config.centerLat;
+            document.getElementById('cfg-lng').value = APP_STATE.config.centerLng;
+            document.getElementById('cfg-radius').value = APP_STATE.config.radiusMeters;
+            document.getElementById('cfg-max-acc').value = APP_STATE.config.maxAccuracyMeters;
+        }
+
+        // ==========================================
+        // 3. SWITCH MODE: PETUGAS STANDALONE <-> ADMIN
+        // ==========================================
+        function switchMode(targetMode) {
+            APP_STATE.mode = targetMode;
+            const petugasShell = document.getElementById('petugas-standalone-shell');
+            const adminShell = document.getElementById('admin-dashboard-shell');
+
+            if (targetMode === 'admin') {
+                stopCameraStream();
+                stopGpsWatcher();
+                petugasShell.classList.add('hidden');
+                adminShell.classList.remove('hidden');
+                checkAdminAuthUI();
+            } else {
+                adminShell.classList.add('hidden');
+                petugasShell.classList.remove('hidden');
+                startGpsWatcher(false);
+                validateSubmitReadiness();
+            }
+            if (window.lucide) lucide.createIcons();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function navigateAdmin(subViewName) {
+            APP_STATE.adminSubView = subViewName;
+            toggleMobileSidebar(false);
+
+            document.querySelectorAll('.admin-subview').forEach(el => el.classList.add('hidden'));
+            const activeEl = document.getElementById(`admin-sub-${subViewName}`);
+            if (activeEl) activeEl.classList.remove('hidden');
+
+            // Update active state sidebar
+            document.querySelectorAll('.admin-nav-item').forEach(btn => {
+                if (btn.dataset.adminNav === subViewName) {
+                    btn.className = "admin-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold bg-[#E8F5EF] text-[#075C40] transition";
+                } else {
+                    btn.className = "admin-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-[#64748B] hover:bg-[#F5F7F6] hover:text-[#1F2937] transition";
+                }
+            });
+
+            const titles = {
+                dashboard: "Dashboard Administrasi",
+                petugas: "Data Petugas Piket & Tour Guide",
+                rekap: "Rekapitulasi Absensi",
+                log: "Log Aktivitas & Keamanan",
+                pengaturan: "Pengaturan Sistem & Geofencing"
+            };
+            document.getElementById('topbar-page-title').textContent = titles[subViewName] || "Portal Admin";
+
+            if (subViewName === 'petugas') renderDataPetugasTable();
+            if (subViewName === 'rekap') applyFilters();
+            if (subViewName === 'log') renderActivityLogTable();
+            if (subViewName === 'dashboard') {
+                renderAdminChart();
+                renderRecentActivityList();
+            }
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function toggleMobileSidebar(open) {
+            const sidebar = document.getElementById('admin-sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            if (open) {
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                backdrop.classList.add('hidden');
+            }
+        }
+
+        function toggleSidebarCollapse() {
+            APP_STATE.sidebarCollapsed = !APP_STATE.sidebarCollapsed;
+            const sidebar = document.getElementById('admin-sidebar');
+            const labels = sidebar.querySelectorAll('.sidebar-label');
+            if (APP_STATE.sidebarCollapsed) {
+                sidebar.classList.remove('w-64');
+                sidebar.classList.add('w-20');
+                labels.forEach(l => l.classList.add('hidden'));
+            } else {
+                sidebar.classList.remove('w-20');
+                sidebar.classList.add('w-64');
+                labels.forEach(l => l.classList.remove('hidden'));
+            }
+        }
+
+        // ==========================================
+        // 4. KONEKSI DATABASE GOOGLE APPS SCRIPT
+        // ==========================================
+        function updateDbStatusUI(connected, labelText = '') {
+            APP_STATE.isDbConnected = connected;
+
+            // Petugas header badge
+            const pPill = document.getElementById('petugas-db-pill');
+            const pDot = document.getElementById('petugas-db-dot');
+            const pTxt = document.getElementById('petugas-db-text');
+            const pAlert = document.getElementById('petugas-offline-alert');
+
+            // Admin topbar badge
+            const aBadge = document.getElementById('admin-db-badge');
+            const aDot = document.getElementById('admin-db-dot');
+            const aTxt = document.getElementById('admin-db-text');
+
+            if (connected) {
+                pPill.className = "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-emerald-950/70 text-emerald-200 border border-emerald-400/30";
+                pDot.className = "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse";
+                pTxt.textContent = "Server Online";
+                pAlert.classList.add('hidden');
+
+                aBadge.className = "cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#E8F5EF] text-[#075C40] border border-emerald-200";
+                aDot.className = "w-2 h-2 rounded-full bg-[#16A34A]";
+                aTxt.textContent = "Database Terhubung";
+
+                document.getElementById('sys-status-gas').textContent = "Terhubung";
+                document.getElementById('sys-status-gas').className = "font-bold text-[#16A34A]";
+            } else {
+                pPill.className = "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-rose-950/70 text-rose-200 border border-rose-500/30";
+                pDot.className = "w-1.5 h-1.5 rounded-full bg-rose-400";
+                pTxt.textContent = "Offline";
+                pAlert.classList.remove('hidden');
+
+                aBadge.className = "cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-rose-50 text-[#DC2626] border border-rose-200";
+                aDot.className = "w-2 h-2 rounded-full bg-[#DC2626]";
+                aTxt.textContent = labelText || "Backend Offline";
+
+                document.getElementById('sys-status-gas').textContent = "Belum Terhubung";
+                document.getElementById('sys-status-gas').className = "font-bold text-[#DC2626]";
+            }
+            validateSubmitReadiness();
+        }
+
+        async function fetchDashboardAndData(showNotify = true) {
+            if (!APP_STATE.gasUrl) {
+                updateDbStatusUI(false, "URL Backend Kosong");
+                return;
+            }
+
+            const refreshIcon = document.getElementById('admin-refresh-icon');
+            if (refreshIcon) refreshIcon.classList.add('animate-spin');
+
+            try {
+                const response = await fetch(APP_STATE.gasUrl, {
+                    method: 'GET',
+                    redirect: 'follow'
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    updateDbStatusUI(true);
+                    APP_STATE.records = data.records || [];
+                    APP_STATE.backendLogs = data.logs || [];
+                    APP_STATE.spreadsheetUrl = data.spreadsheetUrl || '';
+
+                    if (data.config) {
+                        APP_STATE.config = { ...DEFAULT_CONFIG, ...data.config };
+                        if (!data.config.logoUrl) APP_STATE.config.logoUrl = DEFAULT_CONFIG.logoUrl;
+                        applyLogoAndConfigUI();
+                    }
+
+                    if (APP_STATE.spreadsheetUrl) {
+                        const btn = document.getElementById('admin-open-gsheet-btn');
+                        btn.href = APP_STATE.spreadsheetUrl;
+                        btn.classList.remove('hidden');
+                    }
+
+                    updateAdminStatistics(data.serverTime?.formattedDate);
+                    applyFilters();
+                    renderDataPetugasTable();
+                    renderActivityLogTable();
+                    renderRecentActivityList();
+                    renderAdminChart();
+
+                    if (showNotify) showToast('Data berhasil disinkronkan dengan Google Sheets.', 'success');
+                } else {
+                    throw new Error(data.message || 'Gagal membaca database.');
+                }
+            } catch (error) {
+                console.error('Fetch Error:', error);
+                updateDbStatusUI(false, "Koneksi Gagal");
+                if (showNotify) showToast('Gagal terhubung ke server: ' + error.message, 'error');
+            } finally {
+                if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+            }
+        }
+
+        function updateAdminStatistics(serverTodayStr) {
+            const records = APP_STATE.records;
+            const todayFormatted = serverTodayStr || new Intl.DateTimeFormat('id-ID', {
+                timeZone: 'Asia/Jakarta',
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+            }).format(new Date());
+
+            document.getElementById('adm-stat-total').textContent = records.length;
+            document.getElementById('adm-stat-today').textContent = records.filter(r => r.tanggal === todayFormatted).length;
+            document.getElementById('adm-stat-piket').textContent = records.filter(r => r.jenisPetugas === 'Piket').length;
+            document.getElementById('adm-stat-tg').textContent = records.filter(r => r.jenisPetugas === 'Tour Guide').length;
+            document.getElementById('adm-stat-s1').textContent = records.filter(r => r.sesi === 'Sesi I').length;
+            document.getElementById('adm-stat-s2').textContent = records.filter(r => r.sesi === 'Sesi II').length;
+            document.getElementById('adm-stat-stg').textContent = records.filter(r => r.sesi === 'Sesi Tour Guide').length;
+        }
+
+        // ==========================================
+        // 5. KAMERA DEPAN REAL-TIME (MediaDevices API)
+        // ==========================================
+        async function startFrontCamera() {
+            const errBox = document.getElementById('camera-error-msg');
+            errBox.classList.add('hidden');
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                errBox.textContent = "Browser atau perangkat Anda tidak mendukung akses kamera langsung (pastikan menggunakan HTTPS).";
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                stopCameraStream();
+                // Prioritaskan kamera depan (facingMode: "user") tanpa fallback ke kamera belakang
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: { exact: "user" },
+                        width: { ideal: 720 },
+                        height: { ideal: 960 }
+                    },
+                    audio: false
+                }).catch(async (err) => {
+                    if (err.name === 'OverconstrainedError') {
+                        return await navigator.mediaDevices.getUserMedia({
+                            video: { facingMode: "user" },
+                            audio: false
+                        });
+                    }
+                    throw err;
+                });
+
+                APP_STATE.mediaStream = stream;
+                const videoEl = document.getElementById('camera-preview');
+                videoEl.srcObject = stream;
+
+                document.getElementById('camera-placeholder').classList.add('hidden');
+                document.getElementById('photo-result').classList.add('hidden');
+                videoEl.classList.remove('hidden');
+                document.getElementById('face-guide').classList.remove('hidden');
+
+                document.getElementById('btn-start-camera').classList.add('hidden');
+                document.getElementById('btn-retake-photo').classList.add('hidden');
+                document.getElementById('btn-capture-photo').classList.remove('hidden');
+
+            } catch (error) {
+                let msg = "Kamera depan tidak dapat diakses. ";
+                if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                    msg += "Izin akses kamera ditolak. Harap izinkan kamera pada pengaturan browser Anda.";
+                } else if (error.name === 'NotFoundError' || error.name === 'OverconstrainedError') {
+                    msg += "Kamera depan (selfie) tidak ditemukan pada perangkat ini.";
+                } else {
+                    msg += error.message;
+                }
+                errBox.textContent = msg;
+                errBox.classList.remove('hidden');
+                showToast("Akses kamera depan gagal.", "error");
+            }
+        }
+
+        function captureFrontPhoto() {
+            const videoEl = document.getElementById('camera-preview');
+            if (!videoEl.srcObject) return;
+
+            const canvas = document.getElementById('photo-canvas');
+            const ctx = canvas.getContext('2d');
+
+            const targetWidth = 600;
+            const aspectRatio = videoEl.videoHeight / videoEl.videoWidth;
+            const targetHeight = Math.round(targetWidth * aspectRatio);
+
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+
+            // Gambar normal (tidak terbalik mirror)
+            ctx.drawImage(videoEl, 0, 0, targetWidth, targetHeight);
+
+            // Watermark identitas resmi
+            ctx.fillStyle = "rgba(7, 92, 64, 0.82)";
+            ctx.fillRect(0, targetHeight - 36, targetWidth, 36);
+            ctx.fillStyle = "#FDE68A";
+            ctx.font = "bold 12px sans-serif";
+            ctx.fillText("PSB PONPES AT-TAWAZUN 2027/2028", 12, targetHeight - 14);
+
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.75);
+            APP_STATE.capturedPhotoBase64 = compressedDataUrl;
+
+            const imgResult = document.getElementById('photo-result');
+            imgResult.src = compressedDataUrl;
+            imgResult.classList.remove('hidden');
+
+            videoEl.classList.add('hidden');
+            document.getElementById('face-guide').classList.add('hidden');
+            stopCameraStream();
+
+            document.getElementById('btn-capture-photo').classList.add('hidden');
+            document.getElementById('btn-retake-photo').classList.remove('hidden');
+
+            const badge = document.getElementById('camera-badge');
+            badge.textContent = "Foto Siap";
+            badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#E8F5EF] text-[#075C40]";
+
+            validateSubmitReadiness();
+            showToast("Foto selfie berhasil diambil.", "success");
+        }
+
+        function retakeFrontPhoto() {
+            APP_STATE.capturedPhotoBase64 = null;
+            const badge = document.getElementById('camera-badge');
+            badge.textContent = "Belum Diambil";
+            badge.className = "text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-[#64748B]";
+            validateSubmitReadiness();
+            startFrontCamera();
+        }
+
+        function stopCameraStream() {
+            if (APP_STATE.mediaStream) {
+                APP_STATE.mediaStream.getTracks().forEach(track => track.stop());
+                APP_STATE.mediaStream = null;
+            }
+        }
+
+        // ==========================================
+        // 6. PENYEMPURNAAN GPS (watchPosition + Fresh Pre-Submit)
+        // ==========================================
+        function calculateHaversineMeters(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const toRad = (deg) => deg * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function stopGpsWatcher() {
+            if (APP_STATE.gps.watchId !== null && navigator.geolocation) {
+                navigator.geolocation.clearWatch(APP_STATE.gps.watchId);
+                APP_STATE.gps.watchId = null;
+            }
+            APP_STATE.gps.isWatching = false;
+        }
+
+        let gpsWatchTimeoutTimer = null;
+
+        function startGpsWatcher(manualTrigger = false) {
+            if (APP_STATE.gps.isWatching && !manualTrigger) return;
+            stopGpsWatcher();
+            if (gpsWatchTimeoutTimer) clearTimeout(gpsWatchTimeoutTimer);
+
+            const card = document.getElementById('gps-status-card');
+            const iconBox = document.getElementById('gps-icon-box');
+            const title = document.getElementById('gps-status-title');
+            const desc = document.getElementById('gps-status-desc');
+            const rejectBox = document.getElementById('geofence-reject-box');
+
+            rejectBox.classList.add('hidden');
+            card.className = "p-4 rounded-2xl border border-[#E5EAE7] bg-[#F5F7F6] transition-all";
+            iconBox.className = "w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 text-[#D97706] flex items-center justify-center shrink-0 animate-pulse";
+            title.textContent = "Mencari lokasi...";
+            desc.textContent = "Mengumpulkan pembacaan satelit GPS untuk memastikan kestabilan akurasi...";
+
+            if (!navigator.geolocation) {
+                setGpsErrorState("Gagal memperoleh lokasi.", "Perangkat atau browser Anda tidak mendukung layanan Geolocation.");
+                return;
+            }
+
+            APP_STATE.gps.isWatching = true;
+            let bestAccuracySeen = Infinity;
+
+            // Batas waktu keseluruhan 35 detik agar tidak menguras baterai
+            gpsWatchTimeoutTimer = setTimeout(() => {
+                stopGpsWatcher();
+                if (!APP_STATE.gps.isVerified && APP_STATE.gps.lat === null) {
+                    setGpsErrorState("Gagal memperoleh lokasi.", "Waktu pencarian sinyal GPS habis (35 detik). Silakan berpindah ke area terbuka dan klik Perbarui Lokasi.");
+                }
+            }, 35000);
+
+            APP_STATE.gps.watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const acc = position.coords.accuracy;
+
+                    // Ambil pembacaan yang lebih akurat atau pembaruan posisi terbaru jika sudah memenuhi syarat akurasi
+                    if (acc <= bestAccuracySeen || acc <= APP_STATE.config.maxAccuracyMeters) {
+                        if (acc < bestAccuracySeen) bestAccuracySeen = acc;
+                        processGpsReading(lat, lng, acc);
+                    }
+
+                    // Hentikan watchPosition otomatis jika akurasi sudah sangat stabil & terverifikasi
+                    if (APP_STATE.gps.isVerified && acc <= 12) {
+                        clearTimeout(gpsWatchTimeoutTimer);
+                        stopGpsWatcher();
+                    }
+                },
+                (error) => {
+                    clearTimeout(gpsWatchTimeoutTimer);
+                    stopGpsWatcher();
+                    let errTitle = "Gagal memperoleh lokasi.";
+                    let errDesc = "Sensor GPS tidak merespons.";
+                    if (error.code === error.PERMISSION_DENIED) {
+                        errDesc = "Izin lokasi ditolak oleh pengguna. Wajib mengizinkan akses lokasi di browser.";
+                    } else if (error.code === error.POSITION_UNAVAILABLE) {
+                        errDesc = "Sinyal GPS tidak tersedia. Pastikan GPS/Lokasi smartphone aktif.";
+                    }
+                    setGpsErrorState(errTitle, errDesc);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 30000,
+                    maximumAge: 0
+                }
+            );
+        }
+
+        function processGpsReading(lat, lng, acc) {
+            const centerLat = parseFloat(APP_STATE.config.centerLat);
+            const centerLng = parseFloat(APP_STATE.config.centerLng);
+            const maxRadius = parseFloat(APP_STATE.config.radiusMeters);
+            const maxAcc = parseFloat(APP_STATE.config.maxAccuracyMeters);
+
+            const distance = calculateHaversineMeters(lat, lng, centerLat, centerLng);
+
+            const isFirstReading = APP_STATE.gps.lat === null;
+            APP_STATE.gps.lat = lat;
+            APP_STATE.gps.lng = lng;
+            APP_STATE.gps.accuracy = acc;
+            APP_STATE.gps.distance = distance;
+            APP_STATE.gps.lastUpdatedAt = Date.now();
+
+            const card = document.getElementById('gps-status-card');
+            const iconBox = document.getElementById('gps-icon-box');
+            const title = document.getElementById('gps-status-title');
+            const desc = document.getElementById('gps-status-desc');
+            const distBadge = document.getElementById('gps-distance-badge');
+            const detailsBox = document.getElementById('gps-details');
+            const rejectBox = document.getElementById('geofence-reject-box');
+
+            detailsBox.classList.remove('hidden');
+            distBadge.classList.remove('hidden');
+            distBadge.textContent = `${distance.toFixed(1)} m`;
+
+            document.getElementById('gps-detail-distance').textContent = `${distance.toFixed(2)} m (Batas ${maxRadius}m)`;
+            document.getElementById('gps-detail-accuracy').textContent = `± ${acc.toFixed(1)} meter`;
+            document.getElementById('gps-detail-coords').textContent = `${lat.toFixed(7)}, ${lng.toFixed(7)}`;
+
+            if (isFirstReading) {
+                document.getElementById('gps-detail-address').textContent = "Memuat nama alamat...";
+                reverseGeocodeCoords(lat, lng);
+            }
+
+            // Validasi 1: Akurasi GPS Maksimal 20 meter
+            if (acc > maxAcc) {
+                APP_STATE.gps.isVerified = false;
+                rejectBox.classList.add('hidden');
+                card.className = "p-4 rounded-2xl border border-amber-300 bg-amber-50/70";
+                iconBox.className = "w-10 h-10 rounded-xl bg-amber-100 text-[#D97706] flex items-center justify-center shrink-0";
+                distBadge.className = "text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-amber-200 text-amber-900";
+                title.textContent = "Akurasi belum memenuhi syarat.";
+                desc.textContent = `Akurasi GPS saat ini ±${acc.toFixed(1)}m (batas maksimal ${maxAcc}m). Tetap di area terbuka agar sinyal stabil.`;
+                validateSubmitReadiness();
+                return false;
+            }
+
+            // Validasi 2: Radius Geofencing 30 meter
+            if (distance <= maxRadius) {
+                APP_STATE.gps.isVerified = true;
+                rejectBox.classList.add('hidden');
+                card.className = "p-4 rounded-2xl border border-emerald-300 bg-[#E8F5EF]/70";
+                iconBox.className = "w-10 h-10 rounded-xl bg-[#087B52] text-white flex items-center justify-center shrink-0";
+                distBadge.className = "text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-[#087B52] text-white";
+                title.textContent = "Di dalam area absensi.";
+                desc.textContent = `Lokasi ditemukan & terverifikasi (${distance.toFixed(1)}m dari Pondok Pesantren At-Tawazun).`;
+                validateSubmitReadiness();
+                return true;
+            } else {
+                APP_STATE.gps.isVerified = false;
+                card.className = "p-4 rounded-2xl border border-rose-300 bg-rose-50/70";
+                iconBox.className = "w-10 h-10 rounded-xl bg-[#DC2626] text-white flex items-center justify-center shrink-0";
+                distBadge.className = "text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-[#DC2626] text-white";
+                title.textContent = "Di luar area absensi.";
+                desc.textContent = `Jarak Anda ${distance.toFixed(1)}m dari titik pusat pesantren (maksimal ${maxRadius}m).`;
+                rejectBox.classList.remove('hidden');
+                validateSubmitReadiness();
+                return false;
+            }
+        }
+
+        function setGpsErrorState(titleText, descText) {
+            APP_STATE.gps.isVerified = false;
+            const card = document.getElementById('gps-status-card');
+            const iconBox = document.getElementById('gps-icon-box');
+            card.className = "p-4 rounded-2xl border border-rose-300 bg-rose-50/70";
+            iconBox.className = "w-10 h-10 rounded-xl bg-[#DC2626] text-white flex items-center justify-center shrink-0";
+            document.getElementById('gps-status-title').textContent = titleText;
+            document.getElementById('gps-status-desc').textContent = descText;
+            validateSubmitReadiness();
+        }
+
+        // Pengukuran GPS Segar wajib tepat sebelum tombol KIRIM ABSENSI mengeksekusi POST
+        function captureFreshGpsBeforeSubmit() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error("Perangkat tidak mendukung GPS."));
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+                        const acc = pos.coords.accuracy;
+                        const isValid = processGpsReading(lat, lng, acc);
+                        if (!isValid) {
+                            if (acc > APP_STATE.config.maxAccuracyMeters) {
+                                reject(new Error(`Akurasi GPS terbaru (±${acc.toFixed(1)}m) belum memenuhi batas maksimal ${APP_STATE.config.maxAccuracyMeters}m.`));
+                            } else {
+                                reject(new Error(`Posisi GPS terbaru Anda (${APP_STATE.gps.distance.toFixed(1)}m) berada di luar radius ${APP_STATE.config.radiusMeters}m.`));
+                            }
+                        } else {
+                            resolve({ lat, lng, acc });
+                        }
+                    },
+                    (err) => {
+                        reject(new Error("Gagal mengambil pembacaan GPS terbaru sebelum pengiriman. Pastikan GPS tetap aktif."));
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 15000,
+                        maximumAge: 0
+                    }
+                );
+            });
+        }
+
+        async function reverseGeocodeCoords(lat, lng) {
+            const addrEl = document.getElementById('gps-detail-address');
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=id`);
+                if (!res.ok) throw new Error("Reverse geocode unavailable");
+                const data = await res.json();
+                if (data && data.display_name) {
+                    const a = data.address || {};
+                    const desa = a.village || a.suburb || a.hamlet || '';
+                    const kec = a.county || a.city_district || a.district || '';
+                    const kab = a.city || a.regency || '';
+                    const prov = a.state || '';
+                    const structured = [desa, kec, kab, prov].filter(Boolean).join(', ');
+                    const finalAddr = structured ? `${structured} (${data.display_name.split(',')[0]})` : data.display_name;
+                    APP_STATE.gps.address = finalAddr;
+                    addrEl.textContent = finalAddr;
+                } else {
+                    throw new Error("Empty address");
+                }
+            } catch (e) {
+                const fallbackCoords = `Koordinat GPS (${lat.toFixed(6)}, ${lng.toFixed(6)}) - Alamat tidak tersedia dari layanan peta`;
+                APP_STATE.gps.address = fallbackCoords;
+                addrEl.textContent = fallbackCoords;
+            }
+        }
+
+        // ==========================================
+        // 7. VALIDASI & PENGIRIMAN ABSENSI KE SERVER
+        // ==========================================
+        document.getElementById('input-nama').addEventListener('input', validateSubmitReadiness);
+        document.getElementById('input-sesi').addEventListener('change', validateSubmitReadiness);
+        document.getElementById('input-jenis').addEventListener('change', validateSubmitReadiness);
+
+        function validateSubmitReadiness() {
+            const nama = document.getElementById('input-nama').value.trim();
+            const sesi = document.getElementById('input-sesi').value;
+            const jenis = document.getElementById('input-jenis').value;
+            const hasPhoto = Boolean(APP_STATE.capturedPhotoBase64);
+            const hasValidGps = APP_STATE.gps.isVerified === true;
+            const hasBackend = Boolean(APP_STATE.gasUrl);
+
+            const isReady = nama.length > 0 && sesi !== "" && jenis !== "" && hasPhoto && hasValidGps && hasBackend && !APP_STATE.isSubmitting;
+            document.getElementById('btn-submit-absensi').disabled = !isReady;
+        }
+
+        async function handleAttendanceSubmit(event) {
+            event.preventDefault();
+            if (APP_STATE.isSubmitting) return;
+
+            const namaClean = document.getElementById('input-nama').value.trim().replace(/\s+/g, ' ');
+            const sesiVal = document.getElementById('input-sesi').value;
+            const jenisVal = document.getElementById('input-jenis').value;
+
+            if (!namaClean || !sesiVal || !jenisVal || !APP_STATE.capturedPhotoBase64 || !APP_STATE.gasUrl) {
+                showToast("Harap lengkapi seluruh formulir, foto selfie, dan verifikasi lokasi GPS.", "error");
+                return;
+            }
+
+            const [namaSesi, waktuSesi] = sesiVal.split('|');
+
+            APP_STATE.isSubmitting = true;
+            validateSubmitReadiness();
+            const btnText = document.getElementById('btn-submit-text');
+
+            try {
+                // Langkah 1: Pengukuran GPS Segar Tepat Sebelum Submit
+                btnText.textContent = "MEMVERIFIKASI GPS TERBARU...";
+                const freshGps = await captureFreshGpsBeforeSubmit();
+
+                // Langkah 2: Kirim Payload ke Backend Existing (Kontrak 100% Sama)
+                btnText.textContent = "MENYIMPAN KE SERVER...";
+                const payload = {
+                    action: "submitAttendance",
+                    namaPetugas: namaClean,
+                    sesi: namaSesi,
+                    waktuSesi: waktuSesi,
+                    jenisPetugas: jenisVal,
+                    photoBase64: APP_STATE.capturedPhotoBase64,
+                    latitude: freshGps.lat,
+                    longitude: freshGps.lng,
+                    accuracy: freshGps.acc,
+                    alamatLokasi: APP_STATE.gps.address || `Koordinat GPS (${freshGps.lat.toFixed(6)}, ${freshGps.lng.toFixed(6)})`
+                };
+
+                const response = await fetch(APP_STATE.gasUrl, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    stopGpsWatcher();
+                    const rec = result.record;
+
+                    // Tampilkan Halaman Sukses Standalone
+                    document.getElementById('succ-id').textContent = rec.id;
+                    document.getElementById('succ-nama').textContent = rec.namaPetugas;
+                    document.getElementById('succ-sesi').textContent = `${rec.sesi} (${rec.waktuSesi})`;
+                    document.getElementById('succ-jenis').textContent = rec.jenisPetugas;
+                    document.getElementById('succ-waktu').textContent = `${rec.hari}, ${rec.tanggal} • ${rec.jam}`;
+                    document.getElementById('succ-jarak').textContent = `Terverifikasi (${rec.jarakPusat})`;
+
+                    document.getElementById('petugas-form-container').classList.add('hidden');
+                    document.getElementById('petugas-success-container').classList.remove('hidden');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+                    fetchDashboardAndData(false);
+                } else {
+                    throw new Error(result.message || "Validasi server menolak absensi.");
+                }
+            } catch (error) {
+                // Jangan hapus form atau foto jika gagal, berikan kesempatan mencoba kembali
+                showCustomModal({
+                    type: 'error',
+                    title: 'PENGIRIMAN ABSENSI GAGAL',
+                    body: `${error.message}\n\nData formulir dan foto Anda tetap tersimpan di layar. Silakan periksa posisi/koneksi dan coba kirim kembali.`,
+                    confirmText: 'Tutup & Coba Lagi'
+                });
+            } finally {
+                APP_STATE.isSubmitting = false;
+                btnText.textContent = "KIRIM ABSENSI";
+                validateSubmitReadiness();
+                if (window.lucide) lucide.createIcons();
+            }
+        }
+
+        function resetToNewAttendance() {
+            document.getElementById('attendance-form').reset();
+            APP_STATE.capturedPhotoBase64 = null;
+            document.getElementById('photo-result').classList.add('hidden');
+            document.getElementById('camera-placeholder').classList.remove('hidden');
+            document.getElementById('btn-retake-photo').classList.add('hidden');
+            document.getElementById('btn-start-camera').classList.remove('hidden');
+            document.getElementById('camera-badge').textContent = "Belum Diambil";
+            document.getElementById('camera-badge').className = "text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-[#64748B]";
+
+            document.getElementById('petugas-success-container').classList.add('hidden');
+            document.getElementById('petugas-form-container').classList.remove('hidden');
+
+            startGpsWatcher(true);
+            validateSubmitReadiness();
+            if (window.lucide) lucide.createIcons();
+        }
+
+        // ==========================================
+        // 8. DATA PETUGAS, REKAPITULASI & PAGINATION
+        // ==========================================
+        function renderDataPetugasTable() {
+            const tbody = document.getElementById('data-petugas-tbody');
+            const q = (document.getElementById('petugas-dir-search')?.value || '').toLowerCase().trim();
+            const jenisFilter = document.getElementById('petugas-dir-jenis')?.value || '';
+
+            // Agregasi unik petugas dari rekaman database aktual (tanpa data fiktif)
+            const map = new Map();
+            APP_STATE.records.forEach(r => {
+                const key = `${r.namaPetugas}|${r.jenisPetugas}`;
+                if (!map.has(key)) {
+                    map.set(key, {
+                        nama: r.namaPetugas,
+                        jenis: r.jenisPetugas,
+                        sesiTerakhir: `${r.sesi} (${r.waktuSesi})`,
+                        totalHadir: 1,
+                        waktuTerakhir: `${r.tanggal} • ${r.jam}`
+                    });
+                } else {
+                    const item = map.get(key);
+                    item.totalHadir += 1;
+                }
+            });
+
+            let list = Array.from(map.values());
+            if (q) list = list.filter(item => item.nama.toLowerCase().includes(q));
+            if (jenisFilter) list = list.filter(item => item.jenis === jenisFilter);
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-10 text-center text-[#64748B]">Tidak ada data petugas ditemukan di database.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map((item, idx) => `
+                <tr class="hover:bg-[#F5F7F6] transition">
+                    <td class="py-3 px-4 font-semibold text-[#64748B]">${idx + 1}</td>
+                    <td class="py-3 px-4 font-bold text-[#1F2937]">${escapeHtml(item.nama)}</td>
+                    <td class="py-3 px-4">
+                        <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${item.jenis === 'Piket' ? 'bg-blue-50 text-[#2563EB]' : 'bg-amber-50 text-[#D97706]'}">
+                            ${escapeHtml(item.jenis)}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-[#64748B]">${escapeHtml(item.sesiTerakhir)}</td>
+                    <td class="py-3 px-4 font-extrabold text-[#087B52]">${item.totalHadir}x Hadir</td>
+                    <td class="py-3 px-4 text-[#64748B] whitespace-nowrap">${escapeHtml(item.waktuTerakhir)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function applyFilters() {
+            const qNama = (document.getElementById('filter-nama')?.value || '').toLowerCase().trim();
+            const dStart = document.getElementById('filter-date-start')?.value || '';
+            const dEnd = document.getElementById('filter-date-end')?.value || '';
+            const fSesi = document.getElementById('filter-sesi')?.value || '';
+            const fJenis = document.getElementById('filter-jenis')?.value || '';
+            const fStatus = document.getElementById('filter-status')?.value || '';
+
+            APP_STATE.filteredRecords = APP_STATE.records.filter(r => {
+                if (qNama && !(r.namaPetugas || '').toLowerCase().includes(qNama)) return false;
+                if (fSesi && r.sesi !== fSesi) return false;
+                if (fJenis && r.jenisPetugas !== fJenis) return false;
+                if (fStatus && !(r.statusValidasi || '').includes(fStatus)) return false;
+
+                if (dStart || dEnd) {
+                    const recIsoDate = (r.timestampServer || '').substring(0, 10);
+                    if (dStart && recIsoDate < dStart) return false;
+                    if (dEnd && recIsoDate > dEnd) return false;
+                }
+                return true;
+            });
+
+            APP_STATE.rekapPage = 1;
+            renderRekapTable();
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-nama').value = '';
+            document.getElementById('filter-date-start').value = '';
+            document.getElementById('filter-date-end').value = '';
+            document.getElementById('filter-sesi').value = '';
+            document.getElementById('filter-jenis').value = '';
+            document.getElementById('filter-status').value = '';
+            applyFilters();
+        }
+
+        function changeRekapPage(delta) {
+            const totalPages = Math.max(1, Math.ceil(APP_STATE.filteredRecords.length / APP_STATE.rekapPerPage));
+            const next = APP_STATE.rekapPage + delta;
+            if (next >= 1 && next <= totalPages) {
+                APP_STATE.rekapPage = next;
+                renderRekapTable();
+            }
+        }
+
+        function renderRekapTable() {
+            const list = APP_STATE.filteredRecords;
+            const tbody = document.getElementById('rekap-table-body');
+            const total = list.length;
+            const totalPages = Math.max(1, Math.ceil(total / APP_STATE.rekapPerPage));
+            const startIdx = (APP_STATE.rekapPage - 1) * APP_STATE.rekapPerPage;
+            const pageItems = list.slice(startIdx, startIdx + APP_STATE.rekapPerPage);
+
+            document.getElementById('rekap-showing-info').textContent = total;
+            document.getElementById('pagination-info').textContent = `Halaman ${APP_STATE.rekapPage} dari ${totalPages}`;
+            document.getElementById('btn-prev-page').disabled = APP_STATE.rekapPage <= 1;
+            document.getElementById('btn-next-page').disabled = APP_STATE.rekapPage >= totalPages;
+
+            if (pageItems.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="py-10 text-center text-[#64748B]">Tidak ada data absensi sesuai filter atau database belum terhubung.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = pageItems.map((r, idx) => {
+                const rowNum = startIdx + idx + 1;
+                const globalFilteredIdx = startIdx + idx;
+                const mapsUrl = `https://www.google.com/maps?q=${r.latitude},${r.longitude}`;
+                const isVerified = (r.statusValidasi || '').includes('TERVERIFIKASI');
+
+                return `
+                    <tr class="hover:bg-[#F5F7F6] transition">
+                        <td class="py-3 px-3 font-semibold text-[#64748B]">${rowNum}</td>
+                        <td class="py-3 px-3 whitespace-nowrap">
+                            <div class="font-bold text-[#1F2937]">${escapeHtml(r.tanggal)}</div>
+                            <div class="text-[10px] text-[#64748B]">${escapeHtml(r.hari)}</div>
+                        </td>
+                        <td class="py-3 px-3 font-mono font-bold text-[#087B52] whitespace-nowrap">${escapeHtml(r.jam)}</td>
+                        <td class="py-3 px-3 font-bold text-[#1F2937]">${escapeHtml(r.namaPetugas)}</td>
+                        <td class="py-3 px-3 whitespace-nowrap">
+                            <div class="font-semibold">${escapeHtml(r.sesi)}</div>
+                            <div class="text-[10px] text-[#64748B]">${escapeHtml(r.waktuSesi)}</div>
+                        </td>
+                        <td class="py-3 px-3 whitespace-nowrap">
+                            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${r.jenisPetugas === 'Piket' ? 'bg-blue-50 text-[#2563EB]' : 'bg-amber-50 text-[#D97706]'}">
+                                ${escapeHtml(r.jenisPetugas)}
+                            </span>
+                        </td>
+                        <td class="py-3 px-3 whitespace-nowrap">
+                            <a href="${mapsUrl}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[#087B52] hover:underline font-bold">
+                                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-[#DC2626]"></i> ${escapeHtml(r.jarakPusat)}
+                            </a>
+                        </td>
+                        <td class="py-3 px-3 text-center">
+                            <button onclick="viewPhotoModal('${r.urlFoto}', '${escapeHtml(r.namaPetugas)}', '${r.timestampServer}')"
+                                class="px-2.5 py-1 rounded-lg bg-[#E8F5EF] hover:bg-emerald-100 text-[#075C40] font-bold text-[11px]">
+                                Foto
+                            </button>
+                        </td>
+                        <td class="py-3 px-3 whitespace-nowrap">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${isVerified ? 'bg-emerald-50 text-[#16A34A]' : 'bg-rose-50 text-[#DC2626]'}">
+                                ${isVerified ? 'Terverifikasi' : 'Anomali'}
+                            </span>
+                        </td>
+                        <td class="py-3 px-3 text-center whitespace-nowrap">
+                            <div class="inline-flex items-center gap-1">
+                                <button onclick="viewDetailModal(${globalFilteredIdx})" class="px-2 py-1 rounded-lg border border-[#E5EAE7] hover:bg-white text-[11px] font-bold text-[#1F2937]">
+                                    Detail
+                                </button>
+                                <button onclick="confirmDeleteRecord('${r.id}', '${escapeHtml(r.namaPetugas)}')" class="px-2 py-1 rounded-lg bg-rose-50 hover:bg-[#DC2626] text-[#DC2626] hover:text-white text-[11px] font-bold transition">
+                                    Hapus
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            if (window.lucide) lucide.createIcons();
+        }
+
+        // ==========================================
+        // 9. LOG AKTIVITAS (DARI DATA & BACKEND)
+        // ==========================================
+        function renderActivityLogTable() {
+            const tbody = document.getElementById('activity-log-tbody');
+            const note = document.getElementById('log-source-note');
+
+            // Gunakan backendLogs jika doGet mengirimkannya, atau turunkan secara jujur dari transaksi aktual
+            let entries = [];
+            if (APP_STATE.backendLogs && APP_STATE.backendLogs.length > 0) {
+                note.textContent = "Menampilkan log langsung dari sheet LOG_AKTIVITAS Google Sheets.";
+                entries = APP_STATE.backendLogs.map(l => ({
+                    waktu: l.timestamp,
+                    aktor: l.aktor,
+                    jenis: l.aktivitas,
+                    keterangan: l.detail
+                }));
+            } else {
+                note.textContent = "Menampilkan riwayat aktivitas dari transaksi absensi aktual di sheet DATA ABSENSI (Buka Google Sheets untuk melihat sheet LOG_AKTIVITAS lengkap).";
+                entries = APP_STATE.records.map(r => ({
+                    waktu: r.timestampServer,
+                    aktor: r.namaPetugas,
+                    jenis: "ABSENSI_BERHASIL",
+                    keterangan: `${r.sesi} (${r.jenisPetugas}) • Jarak ${r.jarakPusat} • Akurasi ${r.akurasiGps}`
+                }));
+            }
+
+            if (entries.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-[#64748B]">Belum ada catatan aktivitas yang dimuat.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = entries.map(item => {
+                let badgeClass = "bg-emerald-50 text-[#16A34A]";
+                let labelStatus = "Berhasil";
+                if (item.jenis.includes("LUAR_RADIUS") || item.jenis.includes("GAGAL")) {
+                    badgeClass = "bg-rose-50 text-[#DC2626]";
+                    labelStatus = "Ditolak";
+                } else if (item.jenis.includes("AKURASI") || item.jenis.includes("GPS")) {
+                    badgeClass = "bg-amber-50 text-[#D97706]";
+                    labelStatus = "Peringatan GPS";
+                } else if (item.aktor === "ADMIN") {
+                    badgeClass = "bg-blue-50 text-[#2563EB]";
+                    labelStatus = "Admin";
+                }
+
+                return `
+                    <tr class="hover:bg-[#F5F7F6] transition">
+                        <td class="py-3 px-4 font-mono text-[11px] text-[#64748B] whitespace-nowrap">${escapeHtml(item.waktu)}</td>
+                        <td class="py-3 px-4 font-bold text-[#1F2937]">${escapeHtml(item.aktor)}</td>
+                        <td class="py-3 px-4 font-semibold text-[#1F2937]">${escapeHtml(item.jenis)}</td>
+                        <td class="py-3 px-4 text-[#64748B]">${escapeHtml(item.keterangan)}</td>
+                        <td class="py-3 px-4 whitespace-nowrap">
+                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${badgeClass}">${labelStatus}</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderRecentActivityList() {
+            const box = document.getElementById('dashboard-recent-list');
+            const recent = APP_STATE.records.slice(0, 6);
+            if (recent.length === 0) {
+                box.innerHTML = `<p class="text-xs text-[#64748B] text-center py-8">Belum ada data absensi di database.</p>`;
+                return;
+            }
+
+            box.innerHTML = recent.map(r => `
+                <div class="p-3 rounded-xl bg-[#F5F7F6] border border-[#E5EAE7] flex items-center justify-between gap-2.5">
+                    <div class="min-w-0">
+                        <p class="text-xs font-bold text-[#1F2937] truncate">${escapeHtml(r.namaPetugas)}</p>
+                        <p class="text-[11px] text-[#64748B] truncate">${escapeHtml(r.sesi)} • ${escapeHtml(r.jenisPetugas)}</p>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <span class="text-[11px] font-mono font-bold text-[#087B52] block">${escapeHtml(r.jam)}</span>
+                        <span class="text-[10px] text-[#64748B]">${escapeHtml(r.jarakPusat)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ==========================================
+        // 10. MODALS, EKSPOR & ADMIN AUTH
+        // ==========================================
+        function viewPhotoModal(url, nama, waktu) {
+            showCustomModal({
+                type: 'info',
+                title: nama,
+                body: `Dokumentasi Kehadiran • ${waktu}`,
+                customHtml: `
+                    <div class="my-3 rounded-xl overflow-hidden border border-[#E5EAE7] bg-[#F5F7F6]">
+                        <img src="${url}" alt="Foto Petugas" class="w-full max-h-80 object-contain mx-auto" onerror="this.src='https://placehold.co/400x300/F5F7F6/64748B?text=Foto+Tersimpan+di+Google+Drive'">
+                    </div>
+                    <a href="${url}" target="_blank" class="text-xs font-bold text-[#087B52] underline">Buka file asli di Google Drive &rarr;</a>
+                `,
+                confirmText: 'Tutup'
+            });
+        }
+
+        function viewDetailModal(filteredIdx) {
+            const r = APP_STATE.filteredRecords[filteredIdx];
+            if (!r) return;
+            const mapsUrl = `https://www.google.com/maps?q=${r.latitude},${r.longitude}`;
+            showCustomModal({
+                type: 'info',
+                title: 'Detail Transaksi Absensi',
+                body: '',
+                customHtml: `
+                    <div class="text-left text-xs space-y-2 bg-[#F5F7F6] p-4 rounded-xl border border-[#E5EAE7] max-h-80 overflow-y-auto">
+                        <div><span class="text-[#64748B]">ID Transaksi:</span> <strong class="font-mono text-[#1F2937]">${r.id}</strong></div>
+                        <div><span class="text-[#64748B]">Nama Petugas:</span> <strong class="text-[#1F2937]">${escapeHtml(r.namaPetugas)}</strong></div>
+                        <div><span class="text-[#64748B]">Sesi & Waktu:</span> <strong>${r.sesi} (${r.waktuSesi})</strong></div>
+                        <div><span class="text-[#64748B]">Jenis Petugas:</span> <strong>${r.jenisPetugas}</strong></div>
+                        <div><span class="text-[#64748B]">Timestamp Server:</span> <strong class="text-[#087B52]">${r.hari}, ${r.tanggal} • ${r.jam}</strong></div>
+                        <div><span class="text-[#64748B]">Status Validasi:</span> <strong class="text-[#16A34A]">${r.statusValidasi}</strong></div>
+                        <div><span class="text-[#64748B]">Akurasi GPS:</span> <strong>${r.akurasiGps}</strong></div>
+                        <div><span class="text-[#64748B]">Koordinat:</span> <span class="font-mono">${r.latitude}, ${r.longitude}</span></div>
+                        <div><span class="text-[#64748B]">Alamat:</span> <p class="text-[#1F2937] mt-0.5">${escapeHtml(r.alamatLokasi)}</p></div>
+                        <div class="pt-2 flex gap-2">
+                            <a href="${mapsUrl}" target="_blank" class="flex-1 text-center py-2 rounded-lg bg-[#087B52] text-white font-bold">Google Maps</a>
+                            <a href="${r.urlFoto}" target="_blank" class="flex-1 text-center py-2 rounded-lg bg-[#C6A45B] text-slate-950 font-bold">Foto Drive</a>
+                        </div>
+                    </div>
+                `,
+                confirmText: 'Tutup'
+            });
+        }
+
+        function toggleExportMenu() {
+            document.getElementById('export-dropdown').classList.toggle('hidden');
+        }
+
+        function exportData(format, scope) {
+            document.getElementById('export-dropdown').classList.add('hidden');
+            const source = scope === 'filtered' ? APP_STATE.filteredRecords : APP_STATE.records;
+            if (!source || source.length === 0) {
+                showToast("Tidak ada data untuk diekspor.", "error");
+                return;
+            }
+
+            const formattedRows = source.map((r, i) => ({
+                "No": i + 1,
+                "ID Absensi": r.id,
+                "Tanggal": r.tanggal,
+                "Hari": r.hari,
+                "Jam (WIB)": r.jam,
+                "Timestamp Server": r.timestampServer,
+                "Nama Petugas": r.namaPetugas,
+                "Sesi": r.sesi,
+                "Waktu Sesi": r.waktuSesi,
+                "Jenis Petugas": r.jenisPetugas,
+                "Status Validasi Lokasi": r.statusValidasi,
+                "Jarak dari Titik Pusat": r.jarakPusat,
+                "Akurasi GPS": r.akurasiGps,
+                "Latitude": r.latitude,
+                "Longitude": r.longitude,
+                "Link Google Maps": `https://www.google.com/maps?q=${r.latitude},${r.longitude}`,
+                "Alamat Lokasi": r.alamatLokasi,
+                "URL Dokumentasi Foto": r.urlFoto
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(formattedRows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Absensi PSB");
+            worksheet['!cols'] = [
+                { wch: 5 }, { wch: 24 }, { wch: 18 }, { wch: 10 }, { wch: 14 },
+                { wch: 24 }, { wch: 30 }, { wch: 16 }, { wch: 18 }, { wch: 14 },
+                { wch: 22 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 14 },
+                { wch: 42 }, { wch: 45 }, { wch: 48 }
+            ];
+
+            if (format === 'xlsx') {
+                XLSX.writeFile(workbook, "Rekap_Absensi_Petugas_PSB_At-Tawazun_2027-2028.xlsx");
+                showToast("File Excel (.xlsx) berhasil diunduh.", "success");
+            } else {
+                XLSX.writeFile(workbook, "Rekap_Absensi_Petugas_PSB_At-Tawazun_2027-2028.csv", { bookType: "csv" });
+                showToast("File CSV berhasil diunduh.", "success");
+            }
+        }
+
+        function checkAdminAuthUI() {
+            const gate = document.getElementById('admin-login-gate');
+            const views = document.getElementById('admin-authenticated-views');
+            const logoutBtn = document.getElementById('sidebar-logout-btn');
+            const authStatus = document.getElementById('sidebar-auth-status');
+
+            if (APP_STATE.adminToken) {
+                gate.classList.add('hidden');
+                views.classList.remove('hidden');
+                logoutBtn.classList.remove('hidden');
+                authStatus.textContent = "Terverifikasi Server";
+                authStatus.className = "text-[10px] font-semibold text-[#16A34A] truncate";
+                navigateAdmin(APP_STATE.adminSubView || 'dashboard');
+            } else {
+                gate.classList.remove('hidden');
+                views.classList.add('hidden');
+                logoutBtn.classList.add('hidden');
+                authStatus.textContent = "Belum Login";
+                authStatus.className = "text-[10px] font-semibold text-[#64748B] truncate";
+            }
+        }
+
+        async function handleAdminLogin(e) {
+            e.preventDefault();
+            const urlInput = document.getElementById('admin-gas-url-login').value.trim();
+            const passInput = document.getElementById('admin-password-input').value;
+
+            if (!urlInput) {
+                showToast("Masukkan URL Web App Google Apps Script.", "error");
+                return;
+            }
+
+            localStorage.setItem('psb_attawazun_gas_url', urlInput);
+            APP_STATE.gasUrl = urlInput;
+
+            const btn = document.getElementById('btn-admin-login');
+            btn.disabled = true;
+            btn.textContent = "Memverifikasi ke Server...";
+
+            try {
+                const res = await fetch(APP_STATE.gasUrl, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        action: "adminLogin",
+                        password: passInput
+                    })
+                });
+                const data = await res.json();
+
+                if (data.status === 'success' && data.token) {
+                    APP_STATE.adminToken = data.token;
+                    sessionStorage.setItem('psb_admin_token', data.token);
+                    document.getElementById('admin-password-input').value = '';
+                    showToast("Login Admin berhasil!", "success");
+                    await fetchDashboardAndData(false);
+                    checkAdminAuthUI();
+                } else {
+                    throw new Error(data.message || "Password tidak valid.");
+                }
+            } catch (err) {
+                showToast("Autentikasi Gagal: " + err.message, "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="log-in" class="w-4 h-4"></i> MASUK DASHBOARD`;
+                if (window.lucide) lucide.createIcons();
+            }
+        }
+
+        function logoutAdmin() {
+            APP_STATE.adminToken = null;
+            sessionStorage.removeItem('psb_admin_token');
+            checkAdminAuthUI();
+            showToast("Anda telah keluar dari sesi Admin.", "info");
+        }
+
+        let uploadedLogoDataUrl = null;
+        function previewLogoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 160;
+                    canvas.height = 160;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, 160, 160);
+                    uploadedLogoDataUrl = canvas.toDataURL('image/png');
+                    showToast("Logo siap disimpan. Klik 'Simpan Pengaturan ke Server'.", "info");
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function saveAdminSettings(e) {
+            e.preventDefault();
+            if (!APP_STATE.adminToken) return;
+
+            const btn = document.getElementById('btn-save-settings');
+            btn.disabled = true;
+            btn.textContent = "Menyimpan ke Server...";
+
+            try {
+                const payload = {
+                    action: "updateSettings",
+                    token: APP_STATE.adminToken,
+                    centerLat: parseFloat(document.getElementById('cfg-lat').value),
+                    centerLng: parseFloat(document.getElementById('cfg-lng').value),
+                    radiusMeters: parseFloat(document.getElementById('cfg-radius').value),
+                    maxAccuracyMeters: parseFloat(document.getElementById('cfg-max-acc').value),
+                    logoUrl: uploadedLogoDataUrl || APP_STATE.config.logoUrl,
+                    newPassword: document.getElementById('cfg-new-password').value
+                };
+
+                const res = await fetch(APP_STATE.gasUrl, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    uploadedLogoDataUrl = null;
+                    document.getElementById('cfg-new-password').value = '';
+                    showToast("Pengaturan berhasil disimpan permanen.", "success");
+                    await fetchDashboardAndData(false);
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                showToast("Gagal menyimpan: " + err.message, "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> SIMPAN PENGATURAN KE SERVER`;
+                if (window.lucide) lucide.createIcons();
+            }
+        }
+
+        function confirmDeleteRecord(id, nama) {
+            showCustomModal({
+                type: 'error',
+                title: 'Konfirmasi Hapus Data',
+                body: `Hapus data absensi atas nama "${nama}" (ID: ${id}) secara permanen dari Google Sheets?`,
+                confirmText: 'Ya, Hapus',
+                cancelText: 'Batal',
+                onConfirm: async () => {
+                    try {
+                        const res = await fetch(APP_STATE.gasUrl, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                action: "deleteRecord",
+                                token: APP_STATE.adminToken,
+                                id: id
+                            })
+                        });
+                        const data = await res.json();
+                        if (data.status === 'success') {
+                            showToast("Data berhasil dihapus.", "success");
+                            fetchDashboardAndData(false);
+                        } else {
+                            throw new Error(data.message);
+                        }
+                    } catch (err) {
+                        showToast("Gagal menghapus: " + err.message, "error");
+                    }
+                }
+            });
+        }
+
+        function renderAdminChart() {
+            const ctx = document.getElementById('admin-attendance-chart');
+            if (!ctx) return;
+
+            const dateMap = {};
+            [...APP_STATE.records].reverse().forEach(r => {
+                const d = r.tanggal || 'Lainnya';
+                if (!dateMap[d]) dateMap[d] = { s1: 0, s2: 0, tg: 0 };
+                if (r.sesi === 'Sesi I') dateMap[d].s1++;
+                else if (r.sesi === 'Sesi II') dateMap[d].s2++;
+                else dateMap[d].tg++;
+            });
+
+            const labels = Object.keys(dateMap).slice(-7);
+            const dataS1 = labels.map(l => dateMap[l].s1);
+            const dataS2 = labels.map(l => dateMap[l].s2);
+            const dataTG = labels.map(l => dateMap[l].tg);
+
+            if (APP_STATE.chartInstance) {
+                APP_STATE.chartInstance.destroy();
+            }
+
+            APP_STATE.chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels.length ? labels : ['Belum ada data'],
+                    datasets: [
+                        { label: 'Sesi I', data: dataS1, backgroundColor: '#087B52', borderRadius: 6 },
+                        { label: 'Sesi II', data: dataS2, backgroundColor: '#C6A45B', borderRadius: 6 },
+                        { label: 'Sesi Tour Guide', data: dataTG, backgroundColor: '#2563EB', borderRadius: 6 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { family: 'Plus Jakarta Sans', size: 11 } } }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                    }
+                }
+            });
+        }
+
+        function toggleBackendCodeModal() {
+            showCustomModal({
+                type: 'info',
+                title: 'Status & Kompatibilitas Backend',
+                body: 'Frontend ini terhubung 100% dengan Web App Google Apps Script (Code.gs) existing tanpa memerlukan perubahan struktur Google Sheets maupun Google Drive.',
+                customHtml: `
+                    <div class="text-left text-[11px] bg-[#F5F7F6] p-3 rounded-xl border border-[#E5EAE7] space-y-1 font-mono text-[#1F2937]">
+                        <div>Endpoint: ${APP_STATE.gasUrl ? escapeHtml(APP_STATE.gasUrl.substring(0, 48)) + '...' : 'Belum diatur'}</div>
+                        <div>Actions: submitAttendance, adminLogin, updateSettings, deleteRecord</div>
+                        <div>Sheet Utama: DATA ABSENSI (17 Kolom)</div>
+                    </div>
+                `,
+                confirmText: 'Tutup'
+            });
+        }
+
+        // ==========================================
+        // 11. TOAST & CUSTOM MODAL HELPERS
+        // ==========================================
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const styles = {
+                success: 'bg-[#075C40] text-white border-[#C6A45B]',
+                error: 'bg-[#DC2626] text-white border-rose-300',
+                info: 'bg-[#1F2937] text-white border-slate-500'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border-l-4 text-xs font-semibold transition-all ${styles[type] || styles.info}`;
+            toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        function showCustomModal({ type = 'info', title, body, customHtml = '', confirmText = 'OK', cancelText = '', onConfirm = null }) {
+            const modal = document.getElementById('custom-modal');
+            const iconEl = document.getElementById('modal-icon');
+            const titleEl = document.getElementById('modal-title');
+            const bodyEl = document.getElementById('modal-body');
+            const actionsEl = document.getElementById('modal-actions');
+
+            if (type === 'success') {
+                iconEl.className = "w-12 h-12 rounded-2xl bg-[#E8F5EF] text-[#16A34A] flex items-center justify-center mx-auto mb-4";
+                iconEl.innerHTML = `<i data-lucide="check-circle-2" class="w-6 h-6"></i>`;
+            } else if (type === 'error') {
+                iconEl.className = "w-12 h-12 rounded-2xl bg-rose-50 text-[#DC2626] flex items-center justify-center mx-auto mb-4";
+                iconEl.innerHTML = `<i data-lucide="alert-circle" class="w-6 h-6"></i>`;
+            } else {
+                iconEl.className = "w-12 h-12 rounded-2xl bg-[#E8F5EF] text-[#087B52] flex items-center justify-center mx-auto mb-4";
+                iconEl.innerHTML = `<i data-lucide="info" class="w-6 h-6"></i>`;
+            }
+
+            titleEl.textContent = title;
+            bodyEl.innerHTML = (body ? `<p>${escapeHtml(body)}</p>` : '') + customHtml;
+            actionsEl.innerHTML = '';
+
+            if (cancelText) {
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = "px-4 py-2.5 rounded-xl border border-[#E5EAE7] hover:bg-[#F5F7F6] text-[#64748B] text-xs font-bold transition";
+                cancelBtn.textContent = cancelText;
+                cancelBtn.onclick = () => modal.classList.add('hidden');
+                actionsEl.appendChild(cancelBtn);
+            }
+
+            const confirmBtn = document.createElement('button');
+            confirmBtn.className = "px-5 py-2.5 rounded-xl bg-[#087B52] hover:bg-[#075C40] text-white text-xs font-bold transition shadow-sm";
+            confirmBtn.textContent = confirmText;
+            confirmBtn.onclick = () => {
+                modal.classList.add('hidden');
+                if (typeof onConfirm === 'function') onConfirm();
+            };
+            actionsEl.appendChild(confirmBtn);
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>
