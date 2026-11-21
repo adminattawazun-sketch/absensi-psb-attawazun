@@ -1569,21 +1569,20 @@
             const maxRadius = parseFloat(APP_STATE.config.radiusMeters);
             const maxAcc = parseFloat(APP_STATE.config.maxAccuracyMeters);
 
-            // FILTER ANTI-LONCATAN BTS:
-            // Jika akurasi lebih dari 150 meter, itu adalah perkiraan kasar menara BTS, bukan satelit GPS.
-            // Jangan langsung ditolak sebagai "di luar area", tapi tunggu satelit mengunci posisi.
-            if (acc > 150) {
+            // FILTER LONCATAN BTS EKSTREM:
+            // Hanya tahan jika akurasi sangat kasar (> 500 meter, murni menara BTS jauh).
+            // Jika <= 500 meter, tetap tampilkan jarak agar petugas tahu posisinya.
+            if (acc > 500) {
                 const title = document.getElementById('gps-status-title');
                 const desc = document.getElementById('gps-status-desc');
                 title.textContent = "Menunggu kunci satelit GPS...";
-                desc.textContent = `Sinyal masih menggunakan jaringan seluler (±${Math.round(acc)}m). Mohon tunggu sebentar atau geser sedikit ke area terbuka...`;
+                desc.textContent = `Sinyal masih menggunakan menara seluler (±${Math.round(acc)}m). Mohon tunggu sebentar di area terbuka...`;
                 return false;
             }
 
             const distance = calculateHaversineMeters(lat, lng, centerLat, centerLng);
 
-            // Simpan koordinat terbaik jika sebelumnya sudah terverifikasi di dalam radius
-            // agar tidak tertimpa oleh loncatan sinyal sesaat
+            // Lindungi koordinat yang sudah terverifikasi valid agar tidak tertimpa sinyal loncatan sesaat
             if (APP_STATE.gps.isVerified && distance > maxRadius && acc > APP_STATE.gps.accuracy) {
                 return true;
             }
@@ -1616,7 +1615,20 @@
                 reverseGeocodeCoords(lat, lng);
             }
 
-            // Validasi 1: Akurasi GPS Maksimal sesuai pengaturan Admin
+            // Cek 1: Jika jarak sudah jelas jauh di luar area (lebih dari radius + toleransi akurasi)
+            if (distance > (maxRadius + acc)) {
+                APP_STATE.gps.isVerified = false;
+                card.className = "p-4 rounded-2xl border border-rose-300 bg-rose-50/70";
+                iconBox.className = "w-10 h-10 rounded-xl bg-[#DC2626] text-white flex items-center justify-center shrink-0";
+                distBadge.className = "text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-[#DC2626] text-white";
+                title.textContent = "Di luar area absensi.";
+                desc.textContent = `Jarak Anda ${distance.toFixed(1)}m dari titik pusat pesantren (maksimal ${maxRadius}m).`;
+                rejectBox.classList.remove('hidden');
+                validateSubmitReadiness();
+                return false;
+            }
+
+            // Cek 2: Berada di sekitar area pondok, pastikan akurasi GPS memenuhi batas Admin
             if (acc > maxAcc) {
                 APP_STATE.gps.isVerified = false;
                 rejectBox.classList.add('hidden');
@@ -1629,7 +1641,7 @@
                 return false;
             }
 
-            // Validasi 2: Radius Geofencing sesuai pengaturan Admin
+            // Cek 3: Lolos akurasi dan masuk radius pesantren
             if (distance <= maxRadius) {
                 APP_STATE.gps.isVerified = true;
                 rejectBox.classList.add('hidden');
@@ -1664,10 +1676,8 @@
             validateSubmitReadiness();
         }
 
-        // Pengukuran GPS Segar sebelum submit (dengan perlindungan agar tidak gugur karena loncatan BTS sesaat)
         function captureFreshGpsBeforeSubmit() {
             return new Promise((resolve, reject) => {
-                // Jika dalam 45 detik terakhir sudah ada lokasi terverifikasi di dalam area, langsung gunakan agar tidak terganggu loncatan sinyal sesaat
                 const isRecentValid = APP_STATE.gps.isVerified && (Date.now() - APP_STATE.gps.lastUpdatedAt < 45000);
                 if (isRecentValid) {
                     resolve({
@@ -1689,7 +1699,7 @@
                         const acc = pos.coords.accuracy;
                         const isValid = processGpsReading(lat, lng, acc);
                         if (!isValid) {
-                            if (acc > 150) {
+                            if (acc > 500) {
                                 reject(new Error(`Sinyal satelit GPS belum terkunci (masih menggunakan menara seluler ±${Math.round(acc)}m). Tunggu beberapa detik di area terbuka lalu coba kirim kembali.`));
                             } else if (acc > APP_STATE.config.maxAccuracyMeters) {
                                 reject(new Error(`Akurasi GPS terbaru (±${acc.toFixed(1)}m) belum memenuhi batas maksimal ${APP_STATE.config.maxAccuracyMeters}m.`));
